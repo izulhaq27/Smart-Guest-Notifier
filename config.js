@@ -12,27 +12,25 @@
 
 const BLYNK_AUTH_TOKEN = 'vSf5e3xetchrYJJ6C2n-rSlePpLMFfh0';
 // 📝 GANTI DENGAN TOKEN ANDA dari Blynk Console
-// Cara mendapatkan: 
-//   1. Buka https://blynk.cloud
-//   2. Login → Devices → Smart Guest Notifier
-//   3. Klik Device Info → Copy Auth Token
 
 const BLYNK_TEMPLATE_ID = 'TMPL6gaw4vA0v';
 // 📝 GANTI DENGAN TEMPLATE ID ANDA
 
-const BLYNK_DEVICE_ID = 'YOUR_DEVICE_ID';
-// 📝 GANTI DENGAN DEVICE ID ANDA dari Blynk
+const BLYNK_DEVICE_ID = ''; 
+// Opsional: ID device Anda
 
 // ===================================
 // API CONFIGURATION
 // ===================================
 
+// Jika website tetap "Offline", coba ganti blynk.cloud dengan server regional Anda:
+// - Singapore: sgp1.blynk.cloud
+// - Europe:    fra1.blynk.cloud
+// - US:        ny3.blynk.cloud
 const BLYNK_API_BASE_URL = 'https://blynk.cloud/external/api';
-// URL API Blynk (jangan diubah)
 
-const REFRESH_INTERVAL = 3000;
-// Interval refresh data dalam millisecond (3000 = 3 detik)
-// Ubah menjadi 5000 untuk 5 detik, dll
+const REFRESH_INTERVAL = 5000;
+// Interval refresh data (5000 = 5 detik). Rekomendasi: 5000-10000ms untuk Blynk Free Plan.
 
 // ===================================
 // VIRTUAL PIN MAPPING
