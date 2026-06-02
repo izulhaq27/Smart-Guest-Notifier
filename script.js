@@ -118,16 +118,16 @@ async function fetchAllBlynkData() {
 
         const json = await response.json();
         
-        // Cek apakah response valid dan memiliki setidaknya data V0 (Visitor Count)
-        if (!json || typeof json[VPIN_VISITOR_COUNT] === 'undefined') {
+        // Cek apakah response valid dan memiliki setidaknya data v0 (Visitor Count)
+        if (!json || typeof json[VPIN_VISITOR_COUNT.toLowerCase()] === 'undefined') {
             throw new Error("Respons Blynk kosong atau VPin belum terinisialisasi");
         }
 
-        // Blynk getAll mengembalikan object { V0: "nilai", ... }
-        const newCount  = parseInt(json[VPIN_VISITOR_COUNT])  || 0;
-        const newDist   = parseFloat(json[VPIN_DISTANCE])     || 0;
-        const newBuzzer = parseInt(json[VPIN_BUZZER])         || 0;
-        const newLed    = parseInt(json[VPIN_LED])            || 0;
+        // Blynk getAll mengembalikan object dengan key lowercase (v0, v1, dst)
+        const newCount  = parseInt(json[VPIN_VISITOR_COUNT.toLowerCase()])  || 0;
+        const newDist   = parseFloat(json[VPIN_DISTANCE.toLowerCase()])     || 0;
+        const newBuzzer = parseInt(json[VPIN_BUZZER.toLowerCase()])         || 0;
+        const newLed    = parseInt(json[VPIN_LED.toLowerCase()])            || 0;
 
         // --- Update status online ---
         if (!appState.deviceOnline) {
@@ -136,17 +136,33 @@ async function fetchAllBlynkData() {
         }
 
         // --- Deteksi pengunjung baru ---
-        // Jika prevVisitorCount adalah -1 (baru pertama kali loading dashboard)
-        // Kita set samakan agar tidak memicu log fiktif ribuan pengunjung
         if (appState.prevVisitorCount === -1) {
+            appState.prevVisitorCount = newCount;
+        } else if (newCount < appState.prevVisitorCount) {
+            // Jika nilai dari Blynk tiba-tiba lebih kecil, berarti ESP32 baru saja di-restart
             appState.prevVisitorCount = newCount;
         } else if (newCount > appState.prevVisitorCount) {
             // Ada kenaikan riil pengunjung → log ke tabel & diagram
             const diff = newCount - appState.prevVisitorCount;
+            // Gunakan jarak yang wajar jika kebetulan polling membaca 0 saat orang lewat
+            const detectedDist = newDist > 0 ? newDist : 25.0; 
+            
             for (let i = 0; i < diff; i++) {
-                logNewVisitor(newDist);
+                logNewVisitor(detectedDist);
             }
             appState.prevVisitorCount = newCount;
+            
+            // KARENA polling web 5 detik sekali, ada kemungkinan status V2 dan V3 di Blynk 
+            // sudah keburu OFF sebelum sempat terbaca.
+            // Jadi, setiap kali ada penambahan tamu, kita PAKSA nyalakan UI Buzzer & LED 
+            // di dashboard selama beberapa detik agar terlihat responsif!
+            newBuzzer = 1;
+            newLed = 1;
+            
+            // Update UI jarak juga agar tidak tertulis "-- cm" saat notifikasi muncul
+            if (newDist === 0) {
+                newDist = detectedDist; 
+            }
         }
 
         appState.todayVisitors    = newCount;
@@ -160,12 +176,20 @@ async function fetchAllBlynkData() {
 
         // Animasi flash jika buzzer atau LED ON
         if (newBuzzer || newLed) {
-            buzzerStatusEl.closest('.metric-card')?.classList.add('flash');
-            ledStatusEl.closest('.metric-card')?.classList.add('flash');
+            const bCard = buzzerStatusEl.closest('.metric-card');
+            const lCard = ledStatusEl.closest('.metric-card');
+            if (bCard) bCard.classList.add('flash');
+            if (lCard) lCard.classList.add('flash');
+            
+            // Hapus class flash setelah 2 detik
             setTimeout(() => {
-                buzzerStatusEl.closest('.metric-card')?.classList.remove('flash');
-                ledStatusEl.closest('.metric-card')?.classList.remove('flash');
-            }, 600);
+                if (bCard) bCard.classList.remove('flash');
+                if (lCard) lCard.classList.remove('flash');
+                
+                // Jika tidak ada data baru dari polling, kembalikan teks ke OFF
+                buzzerStatusEl.textContent = 'OFF';
+                ledStatusEl.textContent = 'OFF';
+            }, 2000);
         }
 
         updateAllDisplay();
