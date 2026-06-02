@@ -159,18 +159,23 @@ async function fetchAllBlynkData() {
             newBuzzer = 1;
             newLed = 1;
             
-            // Update UI jarak juga agar tidak tertulis "-- cm" saat notifikasi muncul
+            // Simpan jarak fiktif/real saat orang lewat jika API kebetulan terbaca 0
             if (newDist === 0) {
                 newDist = detectedDist; 
             }
         }
 
-        appState.todayVisitors    = newCount;
-        appState.lastDistance     = newDist;
+        appState.todayVisitors = newCount;
+        
+        // Simpan jarak terakhir yang valid (> 0) agar tidak kembali ke "-- cm" 
+        // saat tidak ada orang.
+        if (newDist > 0) {
+            appState.lastDistance = newDist;
+        }
 
         // --- Update UI langsung ---
         todayVisitorCountEl.textContent = newCount + '+';
-        sensorDistanceEl.textContent    = newDist > 0 ? newDist.toFixed(1) + ' cm' : '-- cm';
+        sensorDistanceEl.textContent    = appState.lastDistance > 0 ? appState.lastDistance.toFixed(1) + ' cm' : '-- cm';
         buzzerStatusEl.textContent      = newBuzzer ? 'ON' : 'OFF';
         ledStatusEl.textContent         = newLed ? 'ON' : 'OFF';
 
