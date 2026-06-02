@@ -85,6 +85,26 @@ function setupEventListeners() {
         showNotification('Refresh manual...', 'info');
     });
 
+    // Tambahkan kontrol klik pada Card Buzzer & LED
+    const buzzerCard = buzzerStatusEl.closest('.metric-card');
+    const ledCard = ledStatusEl.closest('.metric-card');
+
+    if (buzzerCard) {
+        buzzerCard.style.cursor = 'pointer';
+        buzzerCard.addEventListener('click', () => {
+            const current = buzzerStatusEl.textContent === 'ON' ? 0 : 1;
+            toggleBlynkPin(VPIN_BUZZER, current);
+        });
+    }
+
+    if (ledCard) {
+        ledCard.style.cursor = 'pointer';
+        ledCard.addEventListener('click', () => {
+            const current = ledStatusEl.textContent === 'ON' ? 0 : 1;
+            toggleBlynkPin(VPIN_LED, current);
+        });
+    }
+
     resetBtnEl.addEventListener('click', resetCounter);
     exportBtnEl.addEventListener('click', exportData);
     if (downloadBtnEl) downloadBtnEl.addEventListener('click', exportData);
@@ -98,6 +118,59 @@ function setupEventListeners() {
     }
 
     document.addEventListener('keydown', handleKeyboardShortcuts);
+}
+
+// ===================================
+// 🔗 BLYNK API — ACTIONS
+// ===================================
+
+/**
+ * Mengirim perintah ke Blynk untuk mengubah nilai pin (Write)
+ * Digunakan untuk menyalakan/mematikan Buzzer & LED dari web
+ */
+async function toggleBlynkPin(pin, value) {
+    try {
+        const url = `${BLYNK_BASE_URL}/update?token=${BLYNK_AUTH_TOKEN}&${pin}=${value}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Gagal update pin');
+        
+        showNotification(`Perintah ${pin} sent: ${value ? 'ON' : 'OFF'}`, 'success');
+        
+        // Refresh data setelah 500ms agar UI sinkron
+        setTimeout(fetchAllBlynkData, 500);
+    } catch (err) {
+        console.error('Error toggle pin:', err);
+        showNotification('Gagal mengontrol hardware', 'error');
+    }
+}
+
+/**
+ * Mengecek apakah Hardware (ESP32) benar-benar sedang online
+ */
+async function checkHardwareStatus() {
+    try {
+        const url = `${BLYNK_BASE_URL}/isHardwareConnected?token=${BLYNK_AUTH_TOKEN}`;
+        const response = await fetch(url);
+        const isConnected = await response.json(); // Mengembalikan true/false
+        
+        const sysEl = document.getElementById('systemStatusText');
+        const badge = document.getElementById('blynkConnection');
+        const text  = document.getElementById('blynkStatusText');
+
+        if (isConnected) {
+            if (sysEl) sysEl.textContent = 'Hardware Online';
+            if (badge) badge.classList.add('connected');
+            if (text) text.textContent = 'ESP32 is Connected';
+        } else {
+            if (sysEl) sysEl.textContent = 'Hardware Offline';
+            // Tetap biarkan badge hijau jika API Blynk bisa diakses, 
+            // tapi beri keterangan hardware mati
+            if (text) text.textContent = 'Blynk OK — ESP32 Offline';
+        }
+        return isConnected;
+    } catch (err) {
+        return false;
+    }
 }
 
 // ===================================
@@ -120,6 +193,9 @@ async function fetchAllBlynkData() {
 
         const json = await response.json();
         
+        // Cek status hardware secara spesifik
+        checkHardwareStatus();
+
         // Helper untuk mengambil nilai pin secara case-insensitive (v0 atau V0)
         const getPinValue = (data, pin) => {
             if (data === null || data === undefined) return 0;
