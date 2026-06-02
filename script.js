@@ -117,6 +117,11 @@ async function fetchAllBlynkData() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const json = await response.json();
+        
+        // Cek apakah response valid dan memiliki setidaknya data V0 (Visitor Count)
+        if (!json || typeof json[VPIN_VISITOR_COUNT] === 'undefined') {
+            throw new Error("Respons Blynk kosong atau VPin belum terinisialisasi");
+        }
 
         // Blynk getAll mengembalikan object { V0: "nilai", ... }
         const newCount  = parseInt(json[VPIN_VISITOR_COUNT])  || 0;
@@ -125,18 +130,25 @@ async function fetchAllBlynkData() {
         const newLed    = parseInt(json[VPIN_LED])            || 0;
 
         // --- Update status online ---
-        if (!appState.deviceOnline) updateBlynkStatus(true);
+        if (!appState.deviceOnline) {
+            updateBlynkStatus(true);
+            showNotification('✓ Terhubung ke Blynk Cloud', 'success');
+        }
 
         // --- Deteksi pengunjung baru ---
-        if (appState.prevVisitorCount >= 0 && newCount > appState.prevVisitorCount) {
-            // Ada kenaikan → log history
+        // Jika prevVisitorCount adalah -1 (baru pertama kali loading dashboard)
+        // Kita set samakan agar tidak memicu log fiktif ribuan pengunjung
+        if (appState.prevVisitorCount === -1) {
+            appState.prevVisitorCount = newCount;
+        } else if (newCount > appState.prevVisitorCount) {
+            // Ada kenaikan riil pengunjung → log ke tabel & diagram
             const diff = newCount - appState.prevVisitorCount;
             for (let i = 0; i < diff; i++) {
                 logNewVisitor(newDist);
             }
+            appState.prevVisitorCount = newCount;
         }
 
-        appState.prevVisitorCount = newCount;
         appState.todayVisitors    = newCount;
         appState.lastDistance     = newDist;
 
@@ -146,10 +158,14 @@ async function fetchAllBlynkData() {
         buzzerStatusEl.textContent      = newBuzzer ? 'ON' : 'OFF';
         ledStatusEl.textContent         = newLed ? 'ON' : 'OFF';
 
-        // Animasi flash jika buzzer ON
-        if (newBuzzer) {
+        // Animasi flash jika buzzer atau LED ON
+        if (newBuzzer || newLed) {
             buzzerStatusEl.closest('.metric-card')?.classList.add('flash');
-            setTimeout(() => buzzerStatusEl.closest('.metric-card')?.classList.remove('flash'), 600);
+            ledStatusEl.closest('.metric-card')?.classList.add('flash');
+            setTimeout(() => {
+                buzzerStatusEl.closest('.metric-card')?.classList.remove('flash');
+                ledStatusEl.closest('.metric-card')?.classList.remove('flash');
+            }, 600);
         }
 
         updateAllDisplay();
@@ -161,6 +177,30 @@ async function fetchAllBlynkData() {
 
     } catch (err) {
         console.warn('Gagal fetch Blynk:', err.message);
+        // Jika gagal, coba lakukan fallback untuk mengambil pin V0 saja
+        try {
+            const fallbackUrl = `${BLYNK_BASE_URL}/get?token=${BLYNK_AUTH_TOKEN}&${VPIN_VISITOR_COUNT}`;
+            const fbRes = await fetch(fallbackUrl);
+            if (fbRes.ok) {
+                const val = await fbRes.json();
+                const newCount = parseInt(val) || 0;
+                if (!appState.deviceOnline) updateBlynkStatus(true);
+                
+                if (appState.prevVisitorCount === -1) {
+                    appState.prevVisitorCount = newCount;
+                } else if (newCount > appState.prevVisitorCount) {
+                    logNewVisitor(15.0);
+                    appState.prevVisitorCount = newCount;
+                }
+                appState.todayVisitors = newCount;
+                todayVisitorCountEl.textContent = newCount + '+';
+                updateAllDisplay();
+                return;
+            }
+        } catch(fallbackErr) {
+            console.error("Fallback juga gagal:", fallbackErr.message);
+        }
+        
         updateBlynkStatus(false);
     }
 }
