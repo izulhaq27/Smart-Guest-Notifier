@@ -3,225 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Guest Notifier - Analytics Dashboard</title>
+    <title>Smart Guest Notifier - Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Navigation Header -->
-    <nav class="navbar">
-        <div class="navbar-container">
-            <div class="navbar-logo">
-                <div class="logo-text-group">
-                    <span class="logo-text">Smart Guest Notifier</span>
-                    <span class="logo-subtitle">Analytics Dashboard</span>
-                </div>
-            </div>
-            <div class="navbar-status">
-                <span class="status-indicator" id="statusIndicator">
-                    <span class="status-dot"></span>
-                    <span id="statusLabel">Connecting...</span>
-                </span>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Main Container -->
-    <main class="container">
-
-        <!-- MAIN DASHBOARD SECTION -->
-        <section class="dashboard-main">
-            
-            <!-- Section 1: Overview -->
-            <div class="dashboard-section">
-                <div class="section-header">
-                    <h2 class="section-title">Overview</h2>
-                </div>
-                
-                <!-- Hero Section with Big Number -->
-                <div class="dashboard-hero">
-                    <div class="hero-content">
-                        <p class="hero-label">Total Pengunjung Hari Ini</p>
-                        <h1 class="hero-counter" id="todayVisitorCount">0</h1>
-                        <p class="hero-description">Jumlah pelanggan yang terdeteksi</p>
+    <div class="app-container">
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="project-header">
+                    <div class="logo-icon-box">
+                        <i class="ph-fill ph-broadcast"></i>
+                    </div>
+                    <div>
+                        <h1 class="page-title">Smart Guest Notifier</h1>
+                        <p class="page-subtitle">Dashboard Monitoring IoT</p>
                     </div>
                 </div>
+                <div class="topbar-actions">
+                    <div class="connection-status" id="blynkConnection">
+                        <span class="status-indicator-dot"></span>
+                        <span id="blynkStatusText">Connecting to ESP / Blynk...</span>
+                    </div>
+                    <div class="date-picker">
+                        <i class="ph ph-calendar-blank"></i>
+                        <span id="lastSyncTime">--:--</span>
+                    </div>
+                </div>
+            </header>
 
-                <!-- Key Metrics Cards -->
-                <div class="metrics-grid">
-                    <!-- Card 1: Status Sistem -->
-                    <div class="metric-card">
-                        <div class="metric-header">
-                            <h3 class="metric-title">Status Sistem</h3>
-                        </div>
-                        <div class="metric-content">
-                            <div class="status-badge" id="systemStatus">
-                                <span class="status-dot"></span>
-                                <span id="systemStatusText">Offline</span>
+            <!-- Metric Cards Row -->
+            <div class="metrics-row">
+                <!-- Card 1 -->
+                <div class="metric-card bg-purple">
+                    <div class="metric-icon"><i class="ph-fill ph-heart"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-value" id="todayVisitorCount">0</div>
+                        <div class="metric-label">Total Pengunjung</div>
+                    </div>
+                </div>
+                <!-- Card 2 -->
+                <div class="metric-card bg-blue">
+                    <div class="metric-icon"><i class="ph-fill ph-briefcase"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-value" id="sensorDistance">-- cm</div>
+                        <div class="metric-label">Jarak Objek</div>
+                    </div>
+                </div>
+                <!-- Card 3 -->
+                <div class="metric-card bg-red">
+                    <div class="metric-icon"><i class="ph-fill ph-speaker-high"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-value" id="buzzerStatus">OFF</div>
+                        <div class="metric-label">Status Buzzer</div>
+                    </div>
+                </div>
+                <!-- Card 4 -->
+                <div class="metric-card bg-orange">
+                    <div class="metric-icon"><i class="ph-fill ph-lightbulb"></i></div>
+                    <div class="metric-info">
+                        <div class="metric-value" id="ledStatus">OFF</div>
+                        <div class="metric-label">Status LED</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="charts-row">
+                <!-- Line Chart -->
+                <div class="card chart-card line-chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title-area">
+                            <h2>Tren Deteksi</h2>
+                            <p>Overview pengunjung per jam</p>
+                            <div class="chart-stats mt-4">
+                                <h3 id="avgPerHour">0</h3>
+                                <span>Rata-rata Pengunjung / Jam</span>
                             </div>
-                            <p class="metric-description">Koneksi ke Blynk Cloud</p>
+                            <div class="chart-stats">
+                                <h3 id="peakCount">0</h3>
+                                <span>Puncak Kunjungan</span>
+                            </div>
+                            <button class="btn-primary mt-3" id="refreshBtn">Refresh Data</button>
+                        </div>
+                        <div class="chart-legend-top">
+                            <span class="legend-item"><span class="dot purple"></span> Pengunjung</span>
                         </div>
                     </div>
-
-                    <!-- Card 2: Waktu Terakhir Terdeteksi -->
-                    <div class="metric-card">
-                        <div class="metric-header">
-                            <h3 class="metric-title">Deteksi Terakhir</h3>
-                        </div>
-                        <div class="metric-content">
-                            <div class="time-display" id="lastDetectionTime">--:--:--</div>
-                            <p class="metric-description" id="lastDetectionDescription">Belum ada pengunjung</p>
-                        </div>
-                    </div>
-
-                    <!-- Card 3: Jarak Terukur -->
-                    <div class="metric-card">
-                        <div class="metric-header">
-                            <h3 class="metric-title">Jarak Sensor</h3>
-                        </div>
-                        <div class="metric-content">
-                            <div class="distance-display" id="sensorDistance">-- cm</div>
-                            <p class="metric-description">Pembacaan sensor aktif</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="action-buttons">
-                    <button class="btn-primary" id="refreshBtn">Refresh Data</button>
-                    <button class="btn-secondary" id="resetBtn">Reset Counter</button>
-                </div>
-            </div>
-
-            <!-- Section 2: Analytics -->
-            <div class="dashboard-section">
-                <div class="section-header">
-                    <h2 class="section-title">Analytics</h2>
-                </div>
-
-                <!-- Quick Stats -->
-                <div class="quick-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Rata-rata per Jam</span>
-                        <span class="stat-value" id="avgPerHour">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Waktu Puncak</span>
-                        <span class="stat-value" id="peakHour">--:--</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Total Hari Ini</span>
-                        <span class="stat-value" id="todayTotal">0</span>
-                    </div>
-                </div>
-
-                <!-- Chart Section -->
-                <div class="chart-wrapper">
-                    <h3 class="chart-title">Tren Pengunjung per Jam</h3>
-                    <div class="chart-container">
+                    <div class="canvas-wrapper line-canvas-wrapper">
                         <canvas id="trendChart"></canvas>
                     </div>
-                </div>
-
-                <!-- Business Insights -->
-                <div class="insights-section">
-                    <h3 class="insights-title">Business Insights</h3>
-                    <div class="insight-cards">
-                        <div class="insight-card">
-                            <div class="insight-number" id="peakCount">0</div>
-                            <div class="insight-label">Pengunjung pada jam puncak</div>
+                    
+                    <!-- Bottom stats of line chart like the image -->
+                    <div class="chart-bottom-stats">
+                        <div class="stat-box">
+                            <div class="stat-icon bg-red"><i class="ph-fill ph-wallet"></i></div>
+                            <div class="stat-text">
+                                <span class="stat-title">Status Sistem</span>
+                                <h4 id="systemStatusText">Offline</h4>
+                            </div>
                         </div>
-                        <div class="insight-card">
-                            <div class="insight-number" id="quietCount">0</div>
-                            <div class="insight-label">Pengunjung pada jam sepi</div>
+                        <div class="stat-box">
+                            <div class="stat-icon bg-purple"><i class="ph-fill ph-activity"></i></div>
+                            <div class="stat-text">
+                                <span class="stat-title">Waktu Puncak</span>
+                                <h4 id="peakHour">--:--</h4>
+                            </div>
                         </div>
-                        <div class="insight-card">
-                            <div class="insight-number" id="trafficIntensity">0%</div>
-                            <div class="insight-label">Intensitas traffic hari ini</div>
+                        <div class="stat-box">
+                            <div class="stat-icon bg-blue"><i class="ph-fill ph-clock"></i></div>
+                            <div class="stat-text">
+                                <span class="stat-title">Deteksi Terakhir</span>
+                                <h4 id="lastDetectionTime">--:--</h4>
+                            </div>
                         </div>
                     </div>
-                    <div class="insight-recommendation">
-                        <p class="recommendation-text" id="recommendationText">
-                            Analisis sedang diproses...
-                        </p>
+                </div>
+
+                <!-- Donut Chart -->
+                <div class="card chart-card donut-chart-container">
+                    <div class="chart-header flex-between">
+                        <h2>Analytics</h2>
+                        <i class="ph ph-dots-three text-gray"></i>
+                    </div>
+                    <div class="canvas-wrapper donut-canvas-wrapper">
+                        <canvas id="donutChart"></canvas>
+                        <div class="donut-center-text">
+                            <h3 id="trafficIntensity">0%</h3>
+                            <p>Intensitas</p>
+                        </div>
+                    </div>
+                    <div class="chart-legend-bottom">
+                        <span class="legend-item"><span class="dot purple"></span> Pagi</span>
+                        <span class="legend-item"><span class="dot yellow"></span> Siang</span>
+                        <span class="legend-item"><span class="dot red"></span> Malam</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Section 3: History -->
-            <div class="dashboard-section">
-                <div class="section-header">
-                    <h2 class="section-title">History</h2>
-                </div>
-
-                <div class="history-controls">
-                    <div class="control-item">
-                        <label>Filter Jam:</label>
-                        <select id="hourFilter">
-                            <option value="">Semua Jam</option>
-                            <option value="08">08:00</option>
-                            <option value="09">09:00</option>
-                            <option value="10">10:00</option>
-                            <option value="11">11:00</option>
-                            <option value="12">12:00</option>
-                            <option value="13">13:00</option>
-                            <option value="14">14:00</option>
-                            <option value="15">15:00</option>
-                            <option value="16">16:00</option>
-                            <option value="17">17:00</option>
-                            <option value="18">18:00</option>
-                            <option value="19">19:00</option>
-                            <option value="20">20:00</option>
-                        </select>
+            <!-- Bottom Row (Activities & Table) -->
+            <div class="bottom-row">
+                <!-- Recent Activities -->
+                <div class="card activities-card">
+                    <h2>Log Aktivitas</h2>
+                    <div class="activities-list" id="activityLog">
+                        <div class="activity-empty">Belum ada aktivitas</div>
                     </div>
-                    <button class="btn-tertiary" id="exportBtn">Export Data</button>
                 </div>
 
-                <div class="history-table-wrapper">
-                    <table class="history-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>Waktu</th>
-                                <th>Status</th>
-                                <th>Jarak (cm)</th>
-                                <th>Total Akumulasi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyTableBody">
-                            <tr>
-                                <td colspan="5" class="no-data">Belum ada data pengunjung</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="history-info">
-                    <p>Catatan: Data history tersimpan di browser local storage.</p>
+                <!-- Order Status / History Table -->
+                <div class="card table-card">
+                    <div class="table-header flex-between">
+                        <div>
+                            <h2>Riwayat Pengunjung</h2>
+                            <p>Overview of latest detection</p>
+                        </div>
+                        <div class="table-actions">
+                            <button class="btn-action bg-red text-white" id="resetBtn"><i class="ph ph-trash"></i> Hapus</button>
+                            <button class="btn-action bg-light" id="downloadBtn"><i class="ph ph-download-simple"></i></button>
+                            <div class="search-box">
+                                <input type="text" id="searchInput" placeholder="Search...">
+                            </div>
+                            <button class="btn-action bg-light" id="exportBtn"><i class="ph ph-file-csv"></i></button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>NO</th>
+                                    <th>WAKTU</th>
+                                    <th>JARAK</th>
+                                    <th>AKUMULASI</th>
+                                    <th>STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-gray">Belum ada data history pengunjung</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-pagination">
+                        <span class="showing-text" id="showingText">Menampilkan data history terbaru</span>
+                        <div class="pagination-controls" id="paginationControls">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
                 </div>
             </div>
-
-        </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-content">
-            <p class="footer-main">Smart Guest Notifier - Sistem Analytics Pengunjung Real-Time</p>
-            <p class="footer-subtext">Last Update: <span id="lastUpdateTime">--:--:--</span></p>
-        </div>
-    </footer>
+        </main>
+    </div>
 
     <!-- Notification Container -->
     <div class="notification-container" id="notificationContainer"></div>
 
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-    </div>
-
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.min.js"></script>
     <script src="script.js"></script>
 </body>

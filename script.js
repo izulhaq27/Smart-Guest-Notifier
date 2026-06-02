@@ -1,20 +1,6 @@
 /* ===================================
-   SMART GUEST NOTIFIER - MAIN SCRIPT
-   Business Insights Analytics
+   SMART GUEST NOTIFIER - MAIN SCRIPT (Light Theme)
    =================================== */
-
-// ===================================
-// CONFIGURATION
-// ===================================
-
-const BLYNK_CONFIG = {
-    AUTH_TOKEN: 'vSf5e3xetchrYJJ6C2n-rSlePpLMFfh0',
-    TEMPLATE_ID: 'TMPL6gaw4vA0v',
-    DEVICE_ID: 'YOUR_DEVICE_ID',
-    API_BASE_URL: 'https://blynk.cloud/external/api',
-    VIRTUAL_PIN_VISITOR: 'V0',
-    REFRESH_INTERVAL: 3000,
-};
 
 // ===================================
 // GLOBAL STATE
@@ -28,6 +14,10 @@ let appState = {
     visitorHistory: JSON.parse(localStorage.getItem('visitorHistory')) || [],
     hourlyData: new Array(12).fill(0),
     trendChart: null,
+    donutChart: null,
+    historyPage: 1,
+    historyItemsPerPage: 5,
+    searchQuery: ''
 };
 
 // ===================================
@@ -35,62 +25,40 @@ let appState = {
 // ===================================
 
 const todayVisitorCountEl = document.getElementById('todayVisitorCount');
-const systemStatusEl = document.getElementById('systemStatus');
-const systemStatusTextEl = document.getElementById('systemStatusText');
-const lastDetectionTimeEl = document.getElementById('lastDetectionTime');
-const lastDetectionDescriptionEl = document.getElementById('lastDetectionDescription');
 const sensorDistanceEl = document.getElementById('sensorDistance');
-const statusLabelEl = document.getElementById('statusLabel');
-const footerStatusEl = document.getElementById('footerStatus');
-const lastUpdateTimeEl = document.getElementById('lastUpdateTime');
+const buzzerStatusEl = document.getElementById('buzzerStatus');
+const ledStatusEl = document.getElementById('ledStatus');
 
-// Tab Elements
-const tabBtns = document.querySelectorAll('.tab-btn');
-const tabContents = document.querySelectorAll('.tab-content');
-
-// Analytics Elements
-const avgPerHourEl = document.getElementById('avgPerHour');
+const systemStatusTextEl = document.getElementById('systemStatusText');
 const peakHourEl = document.getElementById('peakHour');
-const todayTotalEl = document.getElementById('todayTotal');
+const lastDetectionTimeEl = document.getElementById('lastDetectionTime');
+const avgPerHourEl = document.getElementById('avgPerHour');
 const peakCountEl = document.getElementById('peakCount');
-const quietCountEl = document.getElementById('quietCount');
 const trafficIntensityEl = document.getElementById('trafficIntensity');
-const recommendationTextEl = document.getElementById('recommendationText');
+const lastSyncTimeEl = document.getElementById('lastSyncTime');
 
-// History Elements
+const activityLogEl = document.getElementById('activityLog');
 const historyTableBodyEl = document.getElementById('historyTableBody');
-const hourFilterEl = document.getElementById('hourFilter');
-const exportBtnEl = document.getElementById('exportBtn');
 
-// Button Elements
 const refreshBtnEl = document.getElementById('refreshBtn');
 const resetBtnEl = document.getElementById('resetBtn');
+const exportBtnEl = document.getElementById('exportBtn');
+const downloadBtnEl = document.getElementById('downloadBtn');
+const searchInputEl = document.getElementById('searchInput');
 
 // ===================================
 // INITIALIZATION
 // ===================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Smart Guest Notifier Dashboard Initialized');
-    
-    // Load initial data from localStorage
     loadInitialData();
-    
-    // Initialize Chart
-    initializeChart();
-    
-    // Event Listeners
+    initializeCharts();
     setupEventListeners();
-    
-    // Initial Update
     updateAllDisplay();
     
-    // Auto Refresh
-    setInterval(refreshData, BLYNK_CONFIG.REFRESH_INTERVAL);
     setInterval(updateTimestamp, 1000);
     
-    // Show welcome notification
-    showNotification('🎉 Dashboard Ready! Sistem siap untuk monitoring pengunjung.', 'success');
+    showNotification('Dashboard Ready!', 'success');
 });
 
 // ===================================
@@ -98,47 +66,44 @@ document.addEventListener('DOMContentLoaded', () => {
 // ===================================
 
 function setupEventListeners() {
-    // Tab Navigation
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', switchTab);
+    refreshBtnEl.addEventListener('click', () => {
+        showNotification('Data refreshed', 'success');
+        updateAllDisplay();
     });
     
-    // Buttons
-    refreshBtnEl.addEventListener('click', refreshData);
     resetBtnEl.addEventListener('click', resetCounter);
     exportBtnEl.addEventListener('click', exportData);
+    if(downloadBtnEl) downloadBtnEl.addEventListener('click', exportData);
     
-    // History Filter
-    hourFilterEl.addEventListener('change', filterHistory);
+    if(searchInputEl) {
+        searchInputEl.addEventListener('input', (e) => {
+            appState.searchQuery = e.target.value.toLowerCase();
+            appState.historyPage = 1; // Reset to first page on search
+            renderHistoryTable();
+        });
+    }
     
-    // Keyboard Shortcuts
     document.addEventListener('keydown', handleKeyboardShortcuts);
 }
 
 // ===================================
-// TAB NAVIGATION
+// DATA HANDLING
 // ===================================
 
-function switchTab(e) {
-    const targetTab = e.currentTarget.dataset.tab;
-    
-    // Remove active dari semua tab
-    tabBtns.forEach(btn => btn.classList.remove('active'));
-    tabContents.forEach(content => content.classList.remove('active'));
-    
-    // Add active ke tab yang diklik
-    e.currentTarget.classList.add('active');
-    document.getElementById(targetTab).classList.add('active');
-    
-    // Update chart jika tab analytics dibuka
-    if (targetTab === 'analytics' && appState.trendChart) {
-        setTimeout(() => appState.trendChart.resize(), 100);
+function updateBlynkStatus(isConnected) {
+    appState.deviceOnline = isConnected;
+    const badge = document.getElementById('blynkConnection');
+    const text = document.getElementById('blynkStatusText');
+    if (badge && text) {
+        if (isConnected) {
+            badge.classList.add('connected');
+            text.textContent = 'Connected to ESP / Blynk';
+        } else {
+            badge.classList.remove('connected');
+            text.textContent = 'Offline - Reconnecting...';
+        }
     }
 }
-
-// ===================================
-// DATA LOADING & PERSISTENCE
-// ===================================
 
 function loadInitialData() {
     const savedData = localStorage.getItem('dashboardData');
@@ -149,8 +114,10 @@ function loadInitialData() {
         appState.hourlyData = data.hourlyData || new Array(12).fill(0);
     }
     
-    // Load visitor history
-    appState.visitorHistory = JSON.parse(localStorage.getItem('visitorHistory')) || [];
+    // Simulate connection after 2 seconds
+    setTimeout(() => {
+        updateBlynkStatus(true);
+    }, 2000);
 }
 
 function saveToPersistence() {
@@ -159,27 +126,7 @@ function saveToPersistence() {
         lastDetectionTime: appState.lastDetectionTime,
         hourlyData: appState.hourlyData,
     }));
-    
     localStorage.setItem('visitorHistory', JSON.stringify(appState.visitorHistory));
-}
-
-// ===================================
-// DATA REFRESH
-// ===================================
-
-async function refreshData() {
-    try {
-        // Simulate Blynk API fetch
-        // In production, replace dengan actual Blynk API call
-        
-        // Update dari localStorage untuk demo
-        updateAllDisplay();
-        updateSystemStatus();
-        
-    } catch (error) {
-        console.error('❌ Error refreshing data:', error);
-        updateSystemStatus(false);
-    }
 }
 
 // ===================================
@@ -187,233 +134,60 @@ async function refreshData() {
 // ===================================
 
 function updateAllDisplay() {
-    updateVisitorCount();
-    updateLastDetection();
-    updateChartData();
-    updateBusinessInsights();
-    renderHistoryTable();
-    updateTimestamp();
-}
-
-function updateVisitorCount() {
-    todayVisitorCountEl.textContent = appState.todayVisitors;
-    todayTotalEl.textContent = appState.todayVisitors;
+    todayVisitorCountEl.textContent = appState.todayVisitors + '+';
     
-    // Update circle progress
-    const maxVisitors = 100;
-    const percentage = Math.min((appState.todayVisitors / maxVisitors) * 283, 283);
-    const circleProgress = document.querySelector('.circle-progress');
-    if (circleProgress) {
-        circleProgress.style.strokeDashoffset = 283 - percentage;
-    }
-}
-
-function updateLastDetection() {
     if (appState.lastDetectionTime) {
         lastDetectionTimeEl.textContent = appState.lastDetectionTime;
-        const now = new Date();
-        const lastTime = new Date(appState.lastDetectionTime);
-        const diffMinutes = Math.floor((now - lastTime) / 60000);
-        
-        let description = '';
-        if (diffMinutes === 0) {
-            description = 'Baru saja';
-        } else if (diffMinutes < 60) {
-            description = `${diffMinutes} menit yang lalu`;
-        } else {
-            const hours = Math.floor(diffMinutes / 60);
-            description = `${hours} jam yang lalu`;
-        }
-        lastDetectionDescriptionEl.textContent = description;
-    } else {
-        lastDetectionTimeEl.textContent = '--:--:--';
-        lastDetectionDescriptionEl.textContent = 'Belum ada pengunjung';
     }
-}
 
-function updateSystemStatus(online = true) {
-    appState.deviceOnline = online;
+    const data = appState.hourlyData;
+    const avg = (data.reduce((a, b) => a + b, 0) / data.length).toFixed(1);
+    avgPerHourEl.textContent = avg;
     
-    if (online) {
-        systemStatusEl.classList.remove('offline');
-        systemStatusEl.classList.add('active');
-        systemStatusTextEl.textContent = '🟢 Terhubung';
-        statusLabelEl.textContent = '🟢 Terhubung';
-        footerStatusEl.textContent = 'Online';
-        statusLabelEl.style.color = 'var(--success-color)';
-    } else {
-        systemStatusEl.classList.add('offline');
-        systemStatusTextEl.textContent = '🔴 Offline';
-        statusLabelEl.textContent = '🔴 Offline';
-        footerStatusEl.textContent = 'Offline';
-        statusLabelEl.style.color = 'var(--error-color)';
-    }
+    const peakCount = Math.max(...data);
+    peakCountEl.textContent = peakCount;
+    
+    const maxIndex = data.indexOf(peakCount);
+    const pHour = `${(maxIndex * 2).toString().padStart(2, '0')}:00`;
+    peakHourEl.textContent = pHour;
+
+    // Traffic Intensity for donut chart
+    const intensity = Math.min((appState.todayVisitors / 500) * 100, 100).toFixed(0);
+    trafficIntensityEl.textContent = intensity + '%';
+
+    updateChartData();
+    renderActivityLog();
+    renderHistoryTable();
 }
 
 function updateTimestamp() {
     const now = new Date();
-    const timeString = now.toLocaleTimeString('id-ID', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    });
-    lastUpdateTimeEl.textContent = timeString;
+    lastSyncTimeEl.textContent = now.toLocaleDateString('id-ID', {
+        day: '2-digit', month: '2-digit', year: 'numeric'
+    }).replace(/\//g, '-');
 }
 
 // ===================================
-// BUSINESS INSIGHTS
+// VISITOR DETECTION (SIMULATION)
 // ===================================
 
-function updateBusinessInsights() {
-    const data = appState.hourlyData;
-    
-    // Rata-rata per jam
-    const avg = (data.reduce((a, b) => a + b, 0) / data.length).toFixed(1);
-    avgPerHourEl.textContent = avg;
-    
-    // Waktu puncak (peak time)
-    const maxIndex = data.indexOf(Math.max(...data));
-    const peakHour = `${(maxIndex * 2).toString().padStart(2, '0')}:00 - ${((maxIndex * 2) + 2).toString().padStart(2, '0')}:00`;
-    peakHourEl.textContent = peakHour;
-    
-    // Peak dan Quiet count
-    const peakCount = Math.max(...data);
-    const quietCount = Math.min(...data.filter(x => x > 0)) || 0;
-    
-    peakCountEl.textContent = peakCount;
-    quietCountEl.textContent = quietCount;
-    
-    // Traffic Intensity
-    const maxPossible = 100; // Asumsi max 100 pengunjung per jam
-    const intensity = Math.min((appState.todayVisitors / (maxPossible * 12)) * 100, 100).toFixed(0);
-    trafficIntensityEl.textContent = intensity + '%';
-    
-    // Generate Recommendation
-    generateRecommendation(peakCount, quietCount, avg, appState.todayVisitors);
-    
-    // Update chart
-    if (appState.trendChart) {
-        appState.trendChart.data.datasets[0].data = data;
-        appState.trendChart.update('none');
-    }
-}
-
-function generateRecommendation(peakCount, quietCount, avg, total) {
-    let recommendation = '';
-    
-    if (total === 0) {
-        recommendation = '📊 Belum ada pengunjung hari ini. Tunggu pelanggan tiba...';
-    } else if (total < 20) {
-        recommendation = `📉 Traffic rendah hari ini (${total} pengunjung). Ini adalah waktu yang tepat untuk stock audit atau maintenance.`;
-    } else if (total < 50) {
-        recommendation = `📊 Traffic normal hari ini (${total} pengunjung). Staf saat ini sudah cukup untuk melayani pelanggan.`;
-    } else if (total < 100) {
-        recommendation = `📈 Traffic tinggi! (${total} pengunjung). Pertimbangkan untuk menambah staf pada jam ${Math.floor(Math.random() * 12) * 2}:00 - ${(Math.floor(Math.random() * 12) * 2) + 2}:00.`;
-    } else {
-        recommendation = `🔥 Traffic SANGAT tinggi! (${total} pengunjung). Perlu tindakan cepat: tambah staf, buka checkout tambahan, atau implementasi antrian.`;
-    }
-    
-    if (peakCount > avg * 1.5) {
-        recommendation += ` \n⚠️ Peak hour terdeteksi pada jam ${Math.floor(Math.random() * 12) * 2}:00.`;
-    }
-    
-    recommendationTextEl.textContent = recommendation;
-}
-
-// ===================================
-// CHART MANAGEMENT
-// ===================================
-
-function initializeChart() {
-    // Load Chart.js dari CDN
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.min.js';
-    script.onload = () => {
-        createTrendChart();
-    };
-    document.head.appendChild(script);
-}
-
-function createTrendChart() {
-    const ctx = document.getElementById('trendChart');
-    if (!ctx) return;
-    
-    appState.trendChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: generateHourLabels(),
-            datasets: [{
-                label: 'Pengunjung per Jam',
-                data: appState.hourlyData,
-                borderColor: '#FF6B35',
-                backgroundColor: 'rgba(255, 107, 53, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: '#FF6B35',
-                pointBorderColor: '#ffffff',
-                pointBorderWidth: 2,
-                pointRadius: 5,
-                pointHoverRadius: 7,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: {
-                        color: '#B0B0B0',
-                        font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: '600' }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: '#808080' },
-                    grid: { color: 'rgba(51, 51, 51, 0.5)' }
-                },
-                x: {
-                    ticks: { color: '#808080' },
-                    grid: { color: 'rgba(51, 51, 51, 0.3)' }
-                }
-            }
-        }
-    });
-}
-
-function generateHourLabels() {
-    const labels = [];
-    for (let i = 0; i < 12; i++) {
-        const hour = (i * 2).toString().padStart(2, '0');
-        labels.push(`${hour}:00`);
-    }
-    return labels;
-}
-
-function updateChartData() {
-    // Update chart dengan data terbaru
-    if (appState.trendChart) {
-        appState.trendChart.data.datasets[0].data = appState.hourlyData;
-        appState.trendChart.update('none');
-    }
-}
-
-// ===================================
-// VISITOR DETECTION
-// ===================================
-
-function addVisitor(distance = 50) {
+function addVisitor(distance = 25) {
     appState.todayVisitors++;
-    appState.lastDetectionTime = new Date().toLocaleTimeString('id-ID');
+    appState.lastDetectionTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     appState.lastDistance = distance;
     
-    // Update hourly data
+    sensorDistanceEl.textContent = distance + ' cm';
+    buzzerStatusEl.textContent = 'ON';
+    ledStatusEl.textContent = 'ON';
+    
+    setTimeout(() => {
+        buzzerStatusEl.textContent = 'OFF';
+        ledStatusEl.textContent = 'OFF';
+    }, 2000);
+    
     const hour = Math.floor(new Date().getHours() / 2);
     appState.hourlyData[hour]++;
     
-    // Add to history
     appState.visitorHistory.unshift({
         no: appState.visitorHistory.length + 1,
         time: new Date().toLocaleTimeString('id-ID'),
@@ -422,172 +196,278 @@ function addVisitor(distance = 50) {
         total: appState.todayVisitors,
     });
     
-    // Keep only last 50 entries
-    if (appState.visitorHistory.length > 50) {
-        appState.visitorHistory.pop();
-    }
+    if (appState.visitorHistory.length > 50) appState.visitorHistory.pop();
     
-    // Save data
     saveToPersistence();
-    
-    // Update display
     updateAllDisplay();
-    
-    // Show notification
-    showNotification(`👥 Pengunjung terdeteksi! Total: ${appState.todayVisitors}`, 'success');
+    showNotification('Pengunjung Terdeteksi!', 'success');
 }
 
 function resetCounter() {
-    if (confirm('Apakah Anda yakin ingin mereset counter? Action ini tidak bisa dibatalkan.')) {
+    if (confirm('Hapus semua data history?')) {
         appState.todayVisitors = 0;
         appState.visitorHistory = [];
         appState.hourlyData = new Array(12).fill(0);
         appState.lastDetectionTime = null;
-        
-        localStorage.removeItem('dashboardData');
-        localStorage.removeItem('visitorHistory');
-        
+        sensorDistanceEl.textContent = '-- cm';
+        saveToPersistence();
         updateAllDisplay();
-        showNotification('✓ Counter berhasil direset', 'info');
+        showNotification('Data dihapus', 'success');
     }
 }
 
 // ===================================
-// HISTORY TABLE
+// CHARTS
 // ===================================
 
-function renderHistoryTable(filteredData = null) {
-    let data = filteredData || appState.visitorHistory;
+function initializeCharts() {
+    createTrendChart();
+    createDonutChart();
+}
+
+function generateHourLabels() {
+    const labels = [];
+    for (let i = 0; i < 12; i++) {
+        labels.push(`${(i * 2).toString().padStart(2, '0')}:00`);
+    }
+    return labels;
+}
+
+function createTrendChart() {
+    const ctx = document.getElementById('trendChart');
+    if (!ctx) return;
     
-    if (data.length === 0) {
-        historyTableBodyEl.innerHTML = `<tr><td colspan="5" class="no-data">Belum ada data pengunjung</td></tr>`;
+    const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(140, 115, 230, 0.5)'); // purple
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    
+    appState.trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: generateHourLabels(),
+            datasets: [{
+                label: 'Pengunjung',
+                data: appState.hourlyData,
+                borderColor: '#8c73e6',
+                backgroundColor: gradient,
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4, // Smooth curve
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: '#8c73e6',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f0f0f0', borderDash: [5, 5] },
+                    ticks: { color: '#a3aed1', font: { size: 10 } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#a3aed1', font: { size: 10 }, maxTicksLimit: 6 }
+                }
+            }
+        }
+    });
+}
+
+function createDonutChart() {
+    const ctx = document.getElementById('donutChart');
+    if (!ctx) return;
+    
+    appState.donutChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pagi', 'Siang', 'Malam'],
+            datasets: [{
+                data: [30, 50, 20],
+                backgroundColor: ['#8c73e6', '#f6c042', '#fa7076'],
+                borderWidth: 0,
+                cutout: '75%',
+                borderRadius: 20
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function updateChartData() {
+    if (appState.trendChart) {
+        appState.trendChart.data.datasets[0].data = appState.hourlyData;
+        appState.trendChart.update();
+    }
+    
+    // Update donut mock data based on hourly
+    if (appState.donutChart) {
+        const d = appState.hourlyData;
+        const pagi = d.slice(0, 4).reduce((a,b)=>a+b, 0); // 00-08
+        const siang = d.slice(4, 9).reduce((a,b)=>a+b, 0); // 08-18
+        const malam = d.slice(9, 12).reduce((a,b)=>a+b, 0); // 18-24
+        
+        if (pagi===0 && siang===0 && malam===0) {
+            appState.donutChart.data.datasets[0].data = [1, 1, 1]; // prevent empty
+        } else {
+            appState.donutChart.data.datasets[0].data = [pagi, siang, malam];
+        }
+        appState.donutChart.update();
+    }
+}
+
+// ===================================
+// ACTIVITIES & TABLE
+// ===================================
+
+function renderActivityLog() {
+    if (appState.visitorHistory.length === 0) {
+        activityLogEl.innerHTML = '<div class="activity-item"><p class="text-gray">Belum ada aktivitas</p></div>';
         return;
     }
     
     let html = '';
-    data.forEach((item, index) => {
-        html += `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${item.time}</td>
-                <td><span class="status-badge">${item.status}</span></td>
-                <td>${item.distance}</td>
-                <td><strong>${item.total}</strong></td>
-            </tr>
-        `;
-    });
+    const colors = ['purple', 'blue', 'red'];
+    const icons = ['ph-bell-ringing', 'ph-activity', 'ph-warning-circle'];
     
-    historyTableBodyEl.innerHTML = html;
+    // Tampilkan max 3
+    const displayCount = Math.min(appState.visitorHistory.length, 3);
+    for (let i = 0; i < displayCount; i++) {
+        const item = appState.visitorHistory[i];
+        const color = colors[i % colors.length];
+        const icon = icons[i % icons.length];
+        
+        html += `
+        <div class="activity-item">
+            <div class="act-time">Baru saja</div>
+            <div class="act-icon ${color}"><i class="ph-fill ${icon}"></i></div>
+            <div class="act-content">
+                <h4>Deteksi Objek</h4>
+                <p>Sensor jarak: ${item.distance} cm</p>
+            </div>
+        </div>`;
+    }
+    activityLogEl.innerHTML = html;
 }
 
-function filterHistory() {
-    const hour = hourFilterEl.value;
+function renderHistoryTable() {
+    const paginationControls = document.getElementById('paginationControls');
+    const showingText = document.getElementById('showingText');
     
-    if (!hour) {
-        renderHistoryTable();
-    } else {
-        const filtered = appState.visitorHistory.filter(item => {
-            const itemHour = item.time.split(':')[0];
-            return itemHour === hour;
-        });
-        renderHistoryTable(filtered);
+    const filteredHistory = appState.visitorHistory.filter(item => {
+        if (!appState.searchQuery) return true;
+        return item.time.toLowerCase().includes(appState.searchQuery) ||
+               item.distance.toString().includes(appState.searchQuery) ||
+               item.status.toLowerCase().includes(appState.searchQuery);
+    });
+    
+    if (filteredHistory.length === 0) {
+        historyTableBodyEl.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray">Belum ada data history pengunjung</td></tr>';
+        if(paginationControls) paginationControls.innerHTML = '';
+        if(showingText) showingText.textContent = appState.searchQuery ? 'Data tidak ditemukan' : 'Menampilkan data history terbaru';
+        return;
+    }
+    
+    const totalItems = filteredHistory.length;
+    const totalPages = Math.ceil(totalItems / appState.historyItemsPerPage);
+    
+    if (appState.historyPage > totalPages) appState.historyPage = totalPages;
+    if (appState.historyPage < 1) appState.historyPage = 1;
+    
+    const startIndex = (appState.historyPage - 1) * appState.historyItemsPerPage;
+    const endIndex = Math.min(startIndex + appState.historyItemsPerPage, totalItems);
+    
+    const currentItems = filteredHistory.slice(startIndex, endIndex);
+    
+    let html = '';
+    currentItems.forEach((item) => {
+        html += `
+        <tr>
+            <td>${item.no}</td>
+            <td>${item.time}</td>
+            <td>${item.distance} cm</td>
+            <td>${item.total}</td>
+            <td><span class="status-badge alert">Process</span></td>
+        </tr>`;
+    });
+    historyTableBodyEl.innerHTML = html;
+    
+    if (showingText) {
+        showingText.textContent = `Menampilkan ${startIndex + 1}-${endIndex} dari ${totalItems} data`;
+    }
+    
+    // Render pagination controls
+    if (paginationControls) {
+        let pagHtml = `<i class="ph ph-caret-left" onclick="changePage(-1)" style="cursor:pointer"></i>`;
+        for (let i = 1; i <= totalPages; i++) {
+            pagHtml += `<span class="page-num ${i === appState.historyPage ? 'active' : ''}" onclick="goToPage(${i})" style="cursor:pointer">${i}</span>`;
+        }
+        pagHtml += `<i class="ph ph-caret-right" onclick="changePage(1)" style="cursor:pointer"></i>`;
+        paginationControls.innerHTML = pagHtml;
     }
 }
 
-// ===================================
-// EXPORT DATA
-// ===================================
-
-function exportData() {
-    const csvContent = generateCSV();
-    downloadCSV(csvContent, 'visitor-data.csv');
-    showNotification('📥 Data berhasil diekspor', 'success');
-}
-
-function generateCSV() {
-    let csv = 'No.,Waktu,Status,Jarak (cm),Total\n';
-    
-    appState.visitorHistory.forEach((item, index) => {
-        csv += `${index + 1},"${item.time}","${item.status}",${item.distance},${item.total}\n`;
+function changePage(direction) {
+    const filteredHistory = appState.visitorHistory.filter(item => {
+        if (!appState.searchQuery) return true;
+        return item.time.toLowerCase().includes(appState.searchQuery) ||
+               item.distance.toString().includes(appState.searchQuery) ||
+               item.status.toLowerCase().includes(appState.searchQuery);
     });
-    
-    return csv;
+    const totalPages = Math.ceil(filteredHistory.length / appState.historyItemsPerPage);
+    const newPage = appState.historyPage + direction;
+    if (newPage >= 1 && newPage <= totalPages) {
+        appState.historyPage = newPage;
+        renderHistoryTable();
+    }
 }
 
-function downloadCSV(content, filename) {
-    const blob = new Blob([content], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    window.URL.revokeObjectURL(url);
+function goToPage(page) {
+    appState.historyPage = page;
+    renderHistoryTable();
 }
 
 // ===================================
-// NOTIFICATIONS
+// UTILS
 // ===================================
 
-function showNotification(message, type = 'info') {
+function showNotification(message, type) {
     const container = document.getElementById('notificationContainer');
-    const notification = document.createElement('div');
-    notification.className = 'notification';
+    const notif = document.createElement('div');
+    notif.className = 'notification';
+    notif.innerHTML = `<span>${type === 'success' ? '✅' : 'ℹ️'}</span> <span>${message}</span>`;
+    container.appendChild(notif);
     
-    let icon = '📌';
-    if (type === 'success') icon = '✅';
-    else if (type === 'error') icon = '❌';
-    else if (type === 'warning') icon = '⚠️';
-    
-    notification.innerHTML = `<span>${icon}</span><span>${message}</span>`;
-    container.appendChild(notification);
-    
-    // Auto remove after 3 seconds
     setTimeout(() => {
-        notification.classList.add('hide');
-        setTimeout(() => notification.remove(), 300);
+        notif.style.opacity = '0';
+        setTimeout(() => notif.remove(), 300);
     }, 3000);
 }
 
-// ===================================
-// KEYBOARD SHORTCUTS
-// ===================================
-
 function handleKeyboardShortcuts(e) {
-    if (e.key === 'R' || e.key === 'r') {
-        refreshData();
-    }
-    
     if (e.key === 'T' || e.key === 't') {
-        addVisitor(Math.floor(Math.random() * 50) + 30);
-    }
-    
-    if (e.key === 'M' || e.key === 'm') {
-        switchTabByIndex(0);
-    }
-    
-    if (e.key === 'A' || e.key === 'a') {
-        switchTabByIndex(1);
-    }
-    
-    if (e.key === 'H' || e.key === 'h') {
-        switchTabByIndex(2);
+        addVisitor(Math.floor(Math.random() * 50) + 10);
     }
 }
 
-function switchTabByIndex(index) {
-    if (tabBtns[index]) {
-        tabBtns[index].click();
-    }
+function exportData() {
+    let csv = 'No,Waktu,Jarak (cm),Total,Status\n';
+    appState.visitorHistory.forEach(item => {
+        csv += `${item.no},${item.time},${item.distance},${item.total},${item.status}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'history.csv';
+    a.click();
 }
-
-// ===================================
-// INITIALIZATION MESSAGE
-// ===================================
-
-console.log('✅ Smart Guest Notifier Dashboard Ready');
-console.log('💡 Tips:');
-console.log('  R - Manual Refresh');
-console.log('  T - Test/Simulasi Deteksi');
-console.log('  M - Go to Dashboard (Main)');
-console.log('  A - Go to Analytics');
-console.log('  H - Go to History');
