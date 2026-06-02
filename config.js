@@ -207,8 +207,9 @@ const CONFIG = {
 };
 
 // Export untuk Node.js (jika digunakan dengan build tool)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = CONFIG;
-}
+// Dinonaktifkan untuk mencegah error SyntaxError di browser browser vanilla
+// if (typeof module !== 'undefined' && module.exports) {
+//     module.exports = CONFIG;
+// }
 
 console.log('⚙️ Configuration loaded successfully');

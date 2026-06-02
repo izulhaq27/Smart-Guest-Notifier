@@ -341,6 +341,10 @@ function updateTimestamp() {
 // CHARTS
 // ===================================
 function initializeCharts() {
+    if (typeof Chart === 'undefined') {
+        console.warn("⚠️ Warning: Chart.js library tidak termuat. Grafik visualisasi dinonaktifkan.");
+        return;
+    }
     createTrendChart();
     createDonutChart();
 }
