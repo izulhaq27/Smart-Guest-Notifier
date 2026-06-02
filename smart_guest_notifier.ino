@@ -40,6 +40,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 int  visitorCount = 0;
 long duration;
 int  distance;
+unsigned long lastBlynkWrite = 0;
 
 // -------------------------------------------------------
 void setup() {
@@ -117,12 +118,17 @@ void loop() {
 
   distance = readDistance();
 
-  // Selalu kirim jarak real-time ke V1 (polling tiap loop)
-  // Hanya kirim jika jarak valid (bukan 999 = timeout)
-  if (distance < 999) {
-    Blynk.virtualWrite(V1, distance);
-  } else {
-    Blynk.virtualWrite(V1, 0);
+  // Kirim data jarak ke Blynk V1 secara non-blocking setiap 1 detik
+  if (millis() - lastBlynkWrite > 1000) {
+    if (distance < 999 && distance > 0) {
+      Blynk.virtualWrite(V1, distance);
+      Serial.print("Kirim Jarak ke Blynk: ");
+      Serial.print(distance);
+      Serial.println(" cm");
+    } else {
+      Blynk.virtualWrite(V1, 0);
+    }
+    lastBlynkWrite = millis();
   }
 
   // ---- Deteksi Pengunjung ----
@@ -136,10 +142,15 @@ void loop() {
     lcd.setCursor(0, 1);
     lcd.print(visitorCount);
 
-    // 2. Nyalakan LED + Buzzer → kirim V2=1, V3=1 ke Blynk
+    // 2. Kirim status Buzzer & LED Aktif ke Blynk
     Blynk.virtualWrite(V2, 1); // Buzzer ON
     Blynk.virtualWrite(V3, 1); // LED ON
+    Blynk.virtualWrite(V0, visitorCount); // Total Pengunjung baru
 
+    Serial.print("Pengunjung Terdeteksi! Total: ");
+    Serial.println(visitorCount);
+
+    // 3. Nyalakan Buzzer & LED lokal dengan irama
     for (int i = 0; i < 3; i++) {
       digitalWrite(ledPin, HIGH);
       tone(buzzerPin, 2000);
@@ -149,25 +160,19 @@ void loop() {
       delay(100);
     }
 
-    // 3. Matikan LED + Buzzer → kirim V2=0, V3=0
+    // 4. Matikan status Buzzer & LED di Blynk
     Blynk.virtualWrite(V2, 0); // Buzzer OFF
     Blynk.virtualWrite(V3, 0); // LED OFF
 
-    // 4. Kirim jumlah pengunjung ke V0
-    Blynk.virtualWrite(V0, visitorCount);
-
-    // 5. Telegram
+    // 5. Kirim Telegram
     String pesan = "Tamu%20Masuk!%0ATotal%20pengunjung%20saat%20ini:%20"
                    + String(visitorCount) + "%20orang.";
     sendTelegram(pesan);
 
-    Serial.print("Pengunjung Terdeteksi! Total: ");
-    Serial.println(visitorCount);
-
-    // 6. Jeda anti-double count
+    // Jeda anti-double count (2 detik)
     delay(2000);
 
-    // 7. Tampilkan kembali hitungan terakhir di LCD
+    // Tampilkan kembali hitungan terakhir di LCD
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Ada Orang Masuk:");
@@ -175,5 +180,5 @@ void loop() {
     lcd.print(visitorCount);
   }
 
-  delay(200); // sedikit jeda agar tidak flood Blynk
+  delay(50); // Jeda loop kecil agar program responsif
 }
