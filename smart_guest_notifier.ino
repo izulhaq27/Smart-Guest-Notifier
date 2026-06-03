@@ -61,7 +61,7 @@ void setup() {
   lcd.setCursor(0, 1);
   lcd.print("Menghubungkan...");
 
-  Blynk.begin(auth, ssid, pass);
+  Blynk.begin(auth, ssid, pass, "sgp1.blynk.cloud", 80);
 
   // Kirim nilai awal ke Blynk setelah connect
   Blynk.virtualWrite(V0, visitorCount);

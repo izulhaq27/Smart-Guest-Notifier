@@ -88,7 +88,7 @@ void setup() {
   
   // Blynk connection
   Serial.println("[WiFi] Connecting to: " + String(ssid));
-  Blynk.begin(auth, ssid, pass);
+  Blynk.begin(auth, ssid, pass, "sgp1.blynk.cloud", 80);
   
   Serial.println("[SYSTEM] System Ready!");
   Serial.println("====================================\n");
