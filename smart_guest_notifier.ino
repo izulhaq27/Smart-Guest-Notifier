@@ -1,9 +1,3 @@
-// =====================================================
-//  SMART GUEST NOTIFIER — ESP32 (FIXED VERSION)
-//  Blynk Virtual Pins:
-//    V0 = visitorCount  (Integer)
-// =====================================================
-
 #define BLYNK_TEMPLATE_ID "TMPL6gaw4vA0v"
 #define BLYNK_TEMPLATE_NAME "Smart Guest Notifier Analytics Module"
 #define BLYNK_AUTH_TOKEN "vSf5e3xetchrYJJ6C2n-rSlePpLMFfh0"
@@ -17,8 +11,8 @@
 
 // --- Konfigurasi WiFi & Blynk ---
 char auth[] = BLYNK_AUTH_TOKEN;
-char ssid[] = "Rosa";         // SUDAH DIUPDATE
-char pass[] = "ilhamrosa123"; // SUDAH DIUPDATE
+char ssid[] = "Rosa";         
+char pass[] = "ilhamrosa123"; 
 
 // --- Konfigurasi Telegram ---
 String botToken = "8857908066:AAF47_ZJIZfV3LGkbn0sT3ODswhMCbrvRyQ"; 
@@ -37,6 +31,28 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 int visitorCount = 0;
 long duration;
 int distance;
+int buzzerState = 0;
+int ledState = 0;
+
+// Handler untuk kontrol Buzzer dari Web (V2)
+BLYNK_WRITE(V2) {
+  buzzerState = param.asInt();
+  if (buzzerState == 1) {
+    tone(buzzerPin, 2000);
+  } else {
+    noTone(buzzerPin);
+  }
+  Serial.print("Buzzer dari Web: ");
+  Serial.println(buzzerState);
+}
+
+// Handler untuk kontrol LED dari Web (V3)
+BLYNK_WRITE(V3) {
+  ledState = param.asInt();
+  digitalWrite(ledPin, ledState ? HIGH : LOW);
+  Serial.print("LED dari Web: ");
+  Serial.println(ledState);
+}
 
 void setup() {
   Serial.begin(115200);
@@ -56,17 +72,20 @@ void setup() {
   lcd.setCursor(0, 1);
   lcd.print("Menghubungkan...");
 
-  // FIX: Menggunakan server Singapore agar lebih stabil
+  // Gunakan server SGP1 agar stabil
   Blynk.begin(auth, ssid, pass, "sgp1.blynk.cloud", 80);
   
-  // Tampilan awal saat sistem sudah siap
+  // Kirim status awal ke Blynk agar tidak kosong (PENTING untuk Web)
+  Blynk.virtualWrite(V0, visitorCount);
+  Blynk.virtualWrite(V1, 0);
+  Blynk.virtualWrite(V2, 0);
+  Blynk.virtualWrite(V3, 0);
+  
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Ada Orang Masuk:");
   lcd.setCursor(0, 1);
   lcd.print(visitorCount);
-  
-  Serial.println("Koneksi Sukses! Sistem Siap!");
 }
 
 int readDistance() {
@@ -85,37 +104,33 @@ void sendTelegram(String message) {
   WiFiClientSecure client;
   client.setInsecure(); 
   HTTPClient http;
-  
   String url = "https://api.telegram.org/bot" + botToken + "/sendMessage?chat_id=" + chatId + "&text=" + message;
-  
   http.begin(client, url);
-  int httpCode = http.GET(); 
-  
-  if (httpCode > 0) {
-    Serial.println("Notifikasi Telegram Terkirim!");
-  } else {
-    Serial.print("Gagal Kirim Telegram. Error HTTP: ");
-    Serial.println(httpCode);
-  }
+  http.GET(); 
   http.end();
 }
 
 void loop() {
   Blynk.run(); 
-  
   distance = readDistance();
+
+  // Update jarak ke Blynk V1 secara periodik (setiap 2 detik)
+  static unsigned long lastUpdate = 0;
+  if (millis() - lastUpdate > 2000) {
+    Blynk.virtualWrite(V1, (distance < 500) ? distance : 0);
+    lastUpdate = millis();
+  }
 
   if (distance > 5 && distance < 100) {
     visitorCount++; 
     
-    // 1. Perubahan Teks LCD
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Ada Orang Masuk:");
     lcd.setCursor(0, 1);
     lcd.print(visitorCount);
     
-    // 2. Irama Notifikasi Lokal
+    // Notifikasi Lokal
     for(int i = 0; i < 3; i++) {
       digitalWrite(ledPin, HIGH);
       tone(buzzerPin, 2000); 
@@ -125,20 +140,15 @@ void loop() {
       delay(100);
     }
 
-    // 3. Kirim data ke Blynk Cloud
+    // Kirim data ke Blynk
     Blynk.virtualWrite(V0, visitorCount);
     
-    // 4. Kirim Pesan ke Telegram
+    // Kirim Telegram
     String pesanTeks = "Tamu%20Masuk!%0ATotal%20pengunjung%20saat%20ini:%20" + String(visitorCount) + "%20orang.";
     sendTelegram(pesanTeks); 
     
-    Serial.print("Pengunjung Terdeteksi! Total: ");
-    Serial.println(visitorCount);
-    
-    // 5. Jeda anti double-count
     delay(2000); 
     
-    // 6. Standby LCD
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Ada Orang Masuk:");
