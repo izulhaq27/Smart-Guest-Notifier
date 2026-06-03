@@ -6,15 +6,15 @@
 // ===================================
 // ⚙️ KONFIGURASI BLYNK
 // ===================================
-// Prioritaskan konfigurasi dari config.js jika tersedia
-const BLYNK_AUTH_TOKEN = (typeof CONFIG !== 'undefined') ? CONFIG.BLYNK_AUTH_TOKEN : "vSf5e3xetchrYJJ6C2n-rSlePpLMFfh0";
-const BLYNK_BASE_URL   = (typeof CONFIG !== 'undefined') ? CONFIG.BLYNK_API_BASE_URL : "https://blynk.cloud/external/api";
+// Menggunakan nilai dari config.js
+const _AUTH  = (typeof BLYNK_AUTH_TOKEN !== 'undefined') ? BLYNK_AUTH_TOKEN : "vSf5e3xetchrYJJ6C2n-rSlePpLMFfh0";
+const _URL   = (typeof BLYNK_API_BASE_URL !== 'undefined') ? BLYNK_API_BASE_URL : "https://blynk.cloud/external/api";
 
-// Virtual Pins — sesuaikan dengan Blynk Datastream kamu
-const VPIN_VISITOR_COUNT = (typeof CONFIG !== 'undefined' && CONFIG.VIRTUAL_PINS) ? CONFIG.VIRTUAL_PINS.VISITOR_COUNT : "V0";
-const VPIN_DISTANCE      = (typeof CONFIG !== 'undefined' && CONFIG.VIRTUAL_PINS) ? CONFIG.VIRTUAL_PINS.DISTANCE : "V1";
-const VPIN_BUZZER        = (typeof CONFIG !== 'undefined' && CONFIG.VIRTUAL_PINS) ? CONFIG.VIRTUAL_PINS.BUZZER_STATUS : "V2";
-const VPIN_LED           = (typeof CONFIG !== 'undefined' && CONFIG.VIRTUAL_PINS) ? CONFIG.VIRTUAL_PINS.LED_STATUS : "V3";
+// Virtual Pins
+const VPIN_VISITOR_COUNT = (typeof VIRTUAL_PINS !== 'undefined') ? VIRTUAL_PINS.VISITOR_COUNT : "V0";
+const VPIN_DISTANCE      = (typeof VIRTUAL_PINS !== 'undefined') ? VIRTUAL_PINS.DISTANCE : "V1";
+const VPIN_BUZZER        = (typeof VIRTUAL_PINS !== 'undefined') ? VIRTUAL_PINS.BUZZER_STATUS : "V2";
+const VPIN_LED           = (typeof VIRTUAL_PINS !== 'undefined') ? VIRTUAL_PINS.LED_STATUS : "V3";
 
 // Interval polling (ms) — Blynk free plan: maks ~1 req/detik
 const POLL_INTERVAL_MS = (typeof CONFIG !== 'undefined') ? CONFIG.REFRESH_INTERVAL : 5000;
@@ -149,7 +149,7 @@ async function toggleBlynkPin(pin, value) {
  */
 async function checkHardwareStatus() {
     try {
-        const url = `${BLYNK_BASE_URL}/isHardwareConnected?token=${BLYNK_AUTH_TOKEN}`;
+        const url = `${_URL}/isHardwareConnected?token=${_AUTH}`;
         const response = await fetch(url);
         const isConnected = await response.json(); // Mengembalikan true/false
         
@@ -184,127 +184,74 @@ async function checkHardwareStatus() {
  */
 async function fetchAllBlynkData() {
     try {
-        // Menggunakan endpoint /get dengan multiple pins (Rekomendasi Blynk IoT)
-        // Format: /get?token=TOKEN&V0&V1&V2&V3
-        const url      = `${BLYNK_BASE_URL}/get?token=${BLYNK_AUTH_TOKEN}&${VPIN_VISITOR_COUNT}&${VPIN_DISTANCE}&${VPIN_BUZZER}&${VPIN_LED}`;
-        const response = await fetch(url);
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const json = await response.json();
+        // Coba ambil V0 dulu sebagai indikator utama
+        const urlV0 = `${BLYNK_BASE_URL}/get?token=${BLYNK_AUTH_TOKEN}&${VPIN_VISITOR_COUNT}`;
+        const resV0 = await fetch(urlV0);
         
-        // Cek status hardware secara spesifik
-        checkHardwareStatus();
+        if (!resV0.ok) throw new Error("Token tidak valid atau server down");
 
-        // Helper untuk mengambil nilai pin secara case-insensitive (v0 atau V0)
-        const getPinValue = (data, pin) => {
-            if (data === null || data === undefined) return 0;
-            if (typeof data !== 'object') return data; // Jika response hanya 1 nilai
-            return data[pin] ?? data[pin.toLowerCase()] ?? data[pin.toUpperCase()] ?? 0;
-        };
+        const valV0 = await resV0.json();
+        const newCount = parseInt(valV0) || 0;
 
-        const newCount  = parseInt(getPinValue(json, VPIN_VISITOR_COUNT)) || 0;
-        let   newDist   = parseFloat(getPinValue(json, VPIN_DISTANCE))   || 0;
-        let   newBuzzer = parseInt(getPinValue(json, VPIN_BUZZER))       || 0;
-        let   newLed    = parseInt(getPinValue(json, VPIN_LED))          || 0;
-
-        // --- Update status online ---
+        // Jika berhasil ambil V0, tandai device online
         if (!appState.deviceOnline) {
             updateBlynkStatus(true);
             showNotification('✓ Terhubung ke Blynk Cloud', 'success');
         }
 
-        // --- Deteksi pengunjung baru (Logic Sinkronisasi) ---
+        // Update Visitor Count
         if (appState.prevVisitorCount === -1) {
             appState.prevVisitorCount = newCount;
-        } else if (newCount < appState.prevVisitorCount) {
-            // Jika nilai dari Blynk lebih kecil, anggap reset/ESP restart
-            appState.prevVisitorCount = newCount;
         } else if (newCount > appState.prevVisitorCount) {
-            // Ada kenaikan riil pengunjung → log ke tabel
             const diff = newCount - appState.prevVisitorCount;
-            // Gunakan jarak yang terbaca, jika 0 pakai default 15cm (asumsi ada orang lewat)
-            const detectedDist = newDist > 0 ? newDist : 15.0; 
-            
             for (let i = 0; i < diff; i++) {
-                logNewVisitor(detectedDist);
+                logNewVisitor(appState.lastDistance || 15);
             }
             appState.prevVisitorCount = newCount;
-            
-            // Paksa nyalakan UI Buzzer & LED agar terlihat responsif (polling 5s lambat)
-            newBuzzer = 1;
-            newLed = 1;
         }
-
+        
         appState.todayVisitors = newCount;
-        
-        // Simpan jarak terakhir yang valid
-        if (newDist > 0) {
-            appState.lastDistance = newDist;
-        }
-
-        // --- Update UI langsung ---
         todayVisitorCountEl.textContent = newCount + '+';
-        
-        // Tampilkan jarak (jika 0 atau > 500 anggap tidak ada objek)
-        if (newDist > 0 && newDist < 500) {
-            sensorDistanceEl.textContent = newDist.toFixed(1) + ' cm';
-        } else {
-            sensorDistanceEl.textContent = '-- cm';
-        }
-        
-        buzzerStatusEl.textContent = newBuzzer ? 'ON' : 'OFF';
-        ledStatusEl.textContent    = newLed ? 'ON' : 'OFF';
 
-        // Animasi flash jika buzzer atau LED ON
-        if (newBuzzer || newLed) {
-            const bCard = buzzerStatusEl.closest('.metric-card');
-            const lCard = ledStatusEl.closest('.metric-card');
-            if (bCard) bCard.classList.add('flash');
-            if (lCard) lCard.classList.add('flash');
-            
-            setTimeout(() => {
-                if (bCard) bCard.classList.remove('flash');
-                if (lCard) lCard.classList.remove('flash');
-            }, 2000);
-        }
+        // Coba ambil pin lain secara terpisah agar tidak error jika salah satu kosong
+        fetchOtherPins();
 
         updateAllDisplay();
         saveToPersistence();
 
-        // Update timestamp sync
         const now = new Date();
-        lastSyncTimeEl.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        lastSyncTimeEl.textContent = now.toLocaleTimeString('id-ID');
 
     } catch (err) {
-        console.warn('Gagal fetch Blynk:', err.message);
-        
-        // Fallback: Coba ambil Visitor Count saja jika multi-get gagal
-        try {
-            const fallbackUrl = `${BLYNK_BASE_URL}/get?token=${BLYNK_AUTH_TOKEN}&${VPIN_VISITOR_COUNT}`;
-            const fbRes = await fetch(fallbackUrl);
-            if (fbRes.ok) {
-                const val = await fbRes.json();
-                const newCount = parseInt(val) || 0;
-                
-                if (!appState.deviceOnline) updateBlynkStatus(true);
-                if (appState.prevVisitorCount === -1) appState.prevVisitorCount = newCount;
-                
-                if (newCount > appState.prevVisitorCount) {
-                    logNewVisitor(15.0);
-                    appState.prevVisitorCount = newCount;
-                }
-                
-                appState.todayVisitors = newCount;
-                todayVisitorCountEl.textContent = newCount + '+';
-                updateAllDisplay();
-                return;
-            }
-        } catch(fallbackErr) {
-            console.error("Fallback juga gagal:", fallbackErr.message);
-        }
-        
+        console.warn('Blynk Fetch Error:', err.message);
         updateBlynkStatus(false);
+    }
+}
+
+/**
+ * Fungsi tambahan untuk ambil data pendukung (V1, V2, V3) tanpa mengganggu V0
+ */
+async function fetchOtherPins() {
+    try {
+        const url = `${BLYNK_BASE_URL}/get?token=${BLYNK_AUTH_TOKEN}&${VPIN_DISTANCE}&${VPIN_BUZZER}&${VPIN_LED}`;
+        const res = await fetch(url);
+        if (res.ok) {
+            const json = await res.json();
+            const getVal = (d, p) => (typeof d === 'object') ? (d[p] || 0) : 0;
+            
+            const dist = parseFloat(getVal(json, VPIN_DISTANCE));
+            const buz  = parseInt(getVal(json, VPIN_BUZZER));
+            const led  = parseInt(getVal(json, VPIN_LED));
+
+            if (dist > 0) {
+                appState.lastDistance = dist;
+                sensorDistanceEl.textContent = dist.toFixed(1) + ' cm';
+            }
+            buzzerStatusEl.textContent = buz ? 'ON' : 'OFF';
+            ledStatusEl.textContent    = led ? 'ON' : 'OFF';
+        }
+    } catch (e) {
+        // Abaikan error jika pin lain belum di-setup di Blynk
     }
 }
 

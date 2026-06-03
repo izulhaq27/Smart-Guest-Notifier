@@ -27,7 +27,7 @@ const BLYNK_DEVICE_ID = '';
 // - Singapore: sgp1.blynk.cloud
 // - Europe:    fra1.blynk.cloud
 // - US:        ny3.blynk.cloud
-const BLYNK_API_BASE_URL = 'https://sgp1.blynk.cloud/external/api';
+const BLYNK_API_BASE_URL = 'https://blynk.cloud/external/api';
 
 const REFRESH_INTERVAL = 5000;
 // Interval refresh data (5000 = 5 detik). Rekomendasi: 5000-10000ms untuk Blynk Free Plan.
