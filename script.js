@@ -155,6 +155,80 @@ function setupInteractiveControls() {
             setTimeout(fetchBlynkData, 500);
         };
     }
+
+    // --- Search Feature ---
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+            const filter = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#historyTableBody tr');
+            
+            rows.forEach(row => {
+                if(row.querySelector('td[colspan]')) return; 
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(filter) ? '' : 'none';
+            });
+        });
+    }
+
+    // --- Delete / Reset Feature ---
+    const resetBtn = document.getElementById('resetBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', async () => {
+            if(confirm("Apakah Anda yakin ingin menghapus semua riwayat dan mereset alat ke 0?")) {
+                const tbody = document.getElementById('historyTableBody');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray">Belum ada data history pengunjung</td></tr>';
+                
+                const actLog = document.getElementById('activityLog');
+                if (actLog) actLog.innerHTML = '<div class="activity-empty">Belum ada aktivitas</div>';
+                
+                // Reset Blynk V0 and V1
+                try {
+                    await fetch(`${_URL}/update?token=${_AUTH}&V0=0&V1=0`);
+                    lastVisitorCount = -1;
+                    lastExitCount = -1;
+                    setTimeout(fetchBlynkData, 500);
+                    showNotification("Sistem berhasil direset", "var(--color-purple)");
+                } catch(e) {
+                    console.error("Gagal mereset Blynk", e);
+                }
+            }
+        });
+    }
+
+    // --- Download CSV Feature ---
+    const exportCSV = () => {
+        const rows = document.querySelectorAll('#historyTableBody tr');
+        let csvContent = "data:text/csv;charset=utf-8,NO,WAKTU,JARAK,AKUMULASI,STATUS\n";
+        
+        let hasData = false;
+        rows.forEach(row => {
+            if(row.querySelector('td[colspan]')) return; 
+            hasData = true;
+            const cols = row.querySelectorAll('td');
+            const rowData = Array.from(cols).map(c => c.textContent.trim()).join(",");
+            csvContent += rowData + "\n";
+        });
+        
+        if(!hasData) {
+            alert("Tidak ada data untuk didownload!");
+            return;
+        }
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Data_Pengunjung_${new Date().toLocaleDateString().replace(/\//g,'-')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) exportBtn.addEventListener('click', exportCSV);
+    
+    const downloadBtn = document.getElementById('downloadBtn');
+    if (downloadBtn) downloadBtn.addEventListener('click', exportCSV);
 }
 
 function updateConnectionUI(online, msg) {
