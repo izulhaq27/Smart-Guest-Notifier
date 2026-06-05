@@ -9,9 +9,13 @@ var _URL  = "https://blynk.cloud/external/api";
 let lastVisitorCount = -1;
 let lastExitCount = -1;
 
+let trendChartInstance = null;
+let donutChartInstance = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log("✅ Dashboard Ready. Starting sync...");
     setupInteractiveControls();
+    initCharts();
     
     // Initial fetch and loop
     fetchBlynkData();
@@ -42,19 +46,35 @@ async function fetchBlynkData() {
             exitEl.textContent = currentExitCount;
         }
 
-        // Notification Logic
+        // Notification & Table Logic
         const currentHour = new Date().getHours();
         
-        if (lastVisitorCount !== -1 && currentVisitorCount > lastVisitorCount) {
-            if (currentHour >= 7 && currentHour < 9) {
-                showNotification("Karyawan Masuk Kerja!", "var(--color-purple)");
-            } else {
-                showNotification("Tamu Umum Masuk!", "var(--color-blue)");
+        if (lastVisitorCount === -1) {
+            // Initial load
+            if (currentVisitorCount > 0 || currentExitCount > 0) {
+                updateCharts(currentVisitorCount);
+                addActivityLog("Sistem Terhubung", `Total masuk: ${currentVisitorCount}, keluar: ${currentExitCount}`, "purple", "ph-fill ph-power");
+                addHistoryTableRow("-", "normal", "Sistem Aktif");
             }
-        }
-        
-        if (lastExitCount !== -1 && currentExitCount > lastExitCount) {
-            showNotification("Karyawan Pulang!", "var(--color-red)");
+        } else {
+            if (currentVisitorCount > lastVisitorCount) {
+                if (currentHour >= 7 && currentHour < 9) {
+                    showNotification("Karyawan Masuk Kerja!", "var(--color-purple)");
+                    addActivityLog("Karyawan Masuk", "Karyawan masuk ke area", "purple", "ph-fill ph-user-check");
+                    addHistoryTableRow("-", "normal", "Karyawan Masuk");
+                } else {
+                    showNotification("Tamu Umum Masuk!", "var(--color-blue)");
+                    addActivityLog("Tamu Masuk", "Tamu umum terdeteksi", "blue", "ph-fill ph-user");
+                    addHistoryTableRow("-", "normal", "Tamu Masuk");
+                }
+                updateCharts(currentVisitorCount);
+            }
+            
+            if (currentExitCount > lastExitCount) {
+                showNotification("Karyawan Pulang!", "var(--color-red)");
+                addActivityLog("Karyawan Pulang", "Karyawan meninggalkan area", "red", "ph-fill ph-sign-out");
+                addHistoryTableRow("-", "alert", "Pulang");
+            }
         }
 
         lastVisitorCount = currentVisitorCount;
@@ -71,6 +91,14 @@ async function fetchBlynkData() {
         if (ledEl) ledEl.textContent = parseInt(v3) ? 'ON' : 'OFF';
 
         updateConnectionUI(true, "Connected to Blynk");
+
+        // Update timestamps
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const lastSyncEl = document.getElementById('lastSyncTime');
+        if (lastSyncEl) lastSyncEl.textContent = timeStr;
+        const lastDetEl = document.getElementById('lastDetectionTime');
+        if (lastDetEl && (currentVisitorCount > 0 || currentExitCount > 0)) lastDetEl.textContent = timeStr;
 
     } catch (err) {
         console.error("❌ Sync Error:", err);
@@ -132,8 +160,10 @@ function setupInteractiveControls() {
 function updateConnectionUI(online, msg) {
     const badge = document.getElementById('blynkConnection');
     const text  = document.getElementById('blynkStatusText');
+    const sysText = document.getElementById('systemStatusText');
     if (badge) badge.className = online ? 'connection-status connected' : 'connection-status';
     if (text) text.textContent = msg;
+    if (sysText) sysText.textContent = online ? 'Online' : 'Offline';
 }
 
 function showNotification(message, colorCode) {
@@ -153,4 +183,138 @@ function showNotification(message, colorCode) {
         notif.style.transform = 'translateX(100%)';
         setTimeout(() => notif.remove(), 300);
     }, 3000);
+}
+
+function initCharts() {
+    const trendCtx = document.getElementById('trendChart');
+    if (trendCtx) {
+        trendChartInstance = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: [], 
+                datasets: [{
+                    label: 'Pengunjung',
+                    data: [],
+                    borderColor: '#8c73e6',
+                    backgroundColor: 'rgba(140, 115, 230, 0.2)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    const donutCtx = document.getElementById('donutChart');
+    if (donutCtx) {
+        donutChartInstance = new Chart(donutCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pagi', 'Siang', 'Malam'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#8c73e6', '#f6c042', '#fa7076'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+}
+
+function updateCharts(visitorCount) {
+    if (!trendChartInstance || !donutChartInstance) return;
+    
+    const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    // Update Line Chart
+    trendChartInstance.data.labels.push(timeStr);
+    trendChartInstance.data.datasets[0].data.push(visitorCount);
+    
+    if (trendChartInstance.data.labels.length > 10) {
+        trendChartInstance.data.labels.shift();
+        trendChartInstance.data.datasets[0].data.shift();
+    }
+    trendChartInstance.update();
+
+    // Update Donut Chart
+    const currentHour = new Date().getHours();
+    if (currentHour >= 5 && currentHour < 12) {
+        donutChartInstance.data.datasets[0].data[0]++; // Pagi
+    } else if (currentHour >= 12 && currentHour < 18) {
+        donutChartInstance.data.datasets[0].data[1]++; // Siang
+    } else {
+        donutChartInstance.data.datasets[0].data[2]++; // Malam
+    }
+    donutChartInstance.update();
+
+    // Update Stats text
+    const total = donutChartInstance.data.datasets[0].data.reduce((a, b) => a + b, 0);
+    const trafficEl = document.getElementById('trafficIntensity');
+    if (trafficEl) trafficEl.textContent = (total > 0 ? 'Aktif' : '0%');
+    
+    const peakCountEl = document.getElementById('peakCount');
+    if (peakCountEl) peakCountEl.textContent = visitorCount;
+    
+    const avgEl = document.getElementById('avgPerHour');
+    if (avgEl) avgEl.textContent = Math.ceil(visitorCount / (trendChartInstance.data.labels.length || 1));
+}
+
+function addActivityLog(title, desc, colorClass, iconClass) {
+    const logContainer = document.getElementById('activityLog');
+    if (!logContainer) return;
+
+    const emptyMsg = logContainer.querySelector('.activity-empty');
+    if (emptyMsg) emptyMsg.remove();
+    
+    const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    const html = `
+    <div class="activity-item">
+        <div class="act-time">${timeStr}</div>
+        <div class="act-icon ${colorClass}"><i class="${iconClass}"></i></div>
+        <div class="act-content">
+            <h4>${title}</h4>
+            <p>${desc}</p>
+        </div>
+    </div>
+    `;
+    logContainer.insertAdjacentHTML('afterbegin', html);
+}
+
+function addHistoryTableRow(distanceVal, statusBadge, statusText) {
+    const tbody = document.getElementById('historyTableBody');
+    if (!tbody) return;
+    
+    if(tbody.querySelector('.text-center')) {
+        tbody.innerHTML = '';
+    }
+    
+    const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    const no = tbody.children.length + 1;
+    const currentTotal = document.getElementById('todayVisitorCount').textContent;
+    
+    const html = `
+    <tr>
+        <td>${no}</td>
+        <td>${timeStr}</td>
+        <td>${distanceVal}</td>
+        <td>${currentTotal}</td>
+        <td><span class="status-badge ${statusBadge}">${statusText}</span></td>
+    </tr>
+    `;
+    tbody.insertAdjacentHTML('afterbegin', html);
 }
