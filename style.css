@@ -420,8 +420,19 @@ body {
 /* ===================================
    TABLE
    =================================== */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .table-header {
     margin-bottom: 20px;
+}
+
+.table-header.flex-between {
+    flex-wrap: wrap;
+    gap: 15px;
 }
 
 .table-header p {
@@ -431,6 +442,7 @@ body {
 
 .table-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
 }
 
@@ -674,5 +686,35 @@ body {
     .metric-label {
         font-size: 11px;
     }
-    .topbar { flex-direction: column; align-items: flex-start; gap: 20px; }
+    .topbar { flex-direction: column; align-items: flex-start; gap: 15px; }
+    .topbar-actions { flex-wrap: wrap; }
+    
+    .chart-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .table-header.flex-between { flex-direction: column; align-items: flex-start; gap: 15px; }
+    
+    .chart-legend-top, .chart-legend-bottom { flex-wrap: wrap; gap: 10px; }
+    
+    .chart-bottom-stats {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .table-actions {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+    
+    .table-pagination {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
 }
+
+@media (max-width: 480px) {
+    .project-header { gap: 10px; }
+    .logo-icon-box { width: 40px; height: 40px; font-size: 20px; }
+    .page-title { font-size: 20px; }
+}
+
