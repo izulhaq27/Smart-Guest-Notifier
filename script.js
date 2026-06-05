@@ -6,6 +6,9 @@
 var _AUTH = "vSf5e3xetchrYJJ6C2n-rSlePpLMFfh0";
 var _URL  = "https://blynk.cloud/external/api";
 
+let lastVisitorCount = -1;
+let lastExitCount = -1;
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log("✅ Dashboard Ready. Starting sync...");
     setupInteractiveControls();
@@ -28,15 +31,34 @@ async function fetchBlynkData() {
 
         // --- 1. Visitor Count (V0) ---
         const v0 = extractPinValue(data, 'V0', 0);
-        document.getElementById('todayVisitorCount').textContent = v0 + '+';
+        const currentVisitorCount = parseInt(v0) || 0;
+        document.getElementById('todayVisitorCount').textContent = currentVisitorCount;
 
-        // --- 2. Jarak Sensor (V1) ---
+        // --- 2. Exit Count (V1) ---
         const v1 = extractPinValue(data, 'V1', 0);
-        const distance = parseFloat(v1);
-        const distEl = document.getElementById('sensorDistance');
-        if (distEl) {
-            distEl.textContent = (distance > 0 && distance < 500) ? distance.toFixed(1) + ' cm' : '-- cm';
+        const currentExitCount = parseInt(v1) || 0;
+        const exitEl = document.getElementById('exitCount');
+        if (exitEl) {
+            exitEl.textContent = currentExitCount;
         }
+
+        // Notification Logic
+        const currentHour = new Date().getHours();
+        
+        if (lastVisitorCount !== -1 && currentVisitorCount > lastVisitorCount) {
+            if (currentHour >= 7 && currentHour < 9) {
+                showNotification("Karyawan Masuk Kerja!", "var(--color-purple)");
+            } else {
+                showNotification("Tamu Umum Masuk!", "var(--color-blue)");
+            }
+        }
+        
+        if (lastExitCount !== -1 && currentExitCount > lastExitCount) {
+            showNotification("Karyawan Pulang!", "var(--color-red)");
+        }
+
+        lastVisitorCount = currentVisitorCount;
+        lastExitCount = currentExitCount;
 
         // --- 3. Status Buzzer (V2) ---
         const v2 = extractPinValue(data, 'V2', 0);
@@ -112,4 +134,23 @@ function updateConnectionUI(online, msg) {
     const text  = document.getElementById('blynkStatusText');
     if (badge) badge.className = online ? 'connection-status connected' : 'connection-status';
     if (text) text.textContent = msg;
+}
+
+function showNotification(message, colorCode) {
+    const container = document.getElementById('notificationContainer');
+    if (!container) return;
+
+    const notif = document.createElement('div');
+    notif.className = 'notification';
+    notif.style.borderLeftColor = colorCode;
+    notif.innerHTML = `<span>${message}</span>`;
+    
+    container.appendChild(notif);
+
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        notif.style.opacity = '0';
+        notif.style.transform = 'translateX(100%)';
+        setTimeout(() => notif.remove(), 300);
+    }, 3000);
 }
