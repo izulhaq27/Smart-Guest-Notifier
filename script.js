@@ -25,12 +25,20 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchBlynkData() {
     // Meminta semua data sekaligus
     const url = `${_URL}/get?token=${_AUTH}&V0&V1&V2&V3`;
+    const hwStatusUrl = `${_URL}/isHardwareConnected?token=${_AUTH}`;
     
     try {
-        const response = await fetch(url);
+        const [response, hwResponse] = await Promise.all([
+            fetch(url),
+            fetch(hwStatusUrl)
+        ]);
+        
         if (!response.ok) throw new Error("Status: " + response.status);
         
         const data = await response.json();
+        const hwConnected = await hwResponse.text();
+        const isOnline = hwConnected.trim() === "true";
+        
         console.log("📥 Data Blynk diterima:", data);
 
         // --- 1. Visitor Count (V0) ---
@@ -90,7 +98,12 @@ async function fetchBlynkData() {
         const ledEl = document.getElementById('ledStatus');
         if (ledEl) ledEl.textContent = parseInt(v3) ? 'ON' : 'OFF';
 
-        updateConnectionUI(true, "Connected to Blynk");
+        // Update UI based on actual Hardware Status
+        if (isOnline) {
+            updateConnectionUI(true, "Connected to ESP");
+        } else {
+            updateConnectionUI(false, "ESP is Offline");
+        }
 
         // Update timestamps
         const now = new Date();
@@ -102,7 +115,7 @@ async function fetchBlynkData() {
 
     } catch (err) {
         console.error("❌ Sync Error:", err);
-        updateConnectionUI(false, "Offline - Reconnecting...");
+        updateConnectionUI(false, "API Error / Offline");
     }
 }
 
