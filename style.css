@@ -2,33 +2,28 @@
    GLOBAL STYLES & VARIABLES
    =================================== */
 :root {
-    /* Light Theme Palette */
     --bg-main: #f4f7fe;
     --bg-surface: #ffffff;
-    --bg-sidebar: #6c5dd3;
-    
     --text-primary: #2b3674;
     --text-secondary: #a3aed1;
     --text-gray: #a3aed1;
-    
-    /* Card Gradients */
+
     --grad-purple: linear-gradient(135deg, #a08ce9, #8c73e6);
     --grad-blue: linear-gradient(135deg, #6b9cf2, #4e82ee);
     --grad-red: linear-gradient(135deg, #fb898e, #fa7076);
     --grad-orange: linear-gradient(135deg, #fcb67b, #fb9a4f);
-    
-    /* Solid Colors */
+
     --color-purple: #8c73e6;
     --color-yellow: #f6c042;
     --color-red: #fa7076;
     --color-blue: #4e82ee;
-    
+
     --border-color: #e9edf7;
-    
+
     --radius-sm: 8px;
     --radius-md: 15px;
     --radius-lg: 20px;
-    
+
     --shadow-soft: 0px 10px 20px rgba(226, 232, 240, 0.5);
     --shadow-card: 0px 5px 15px rgba(108, 93, 211, 0.3);
 }
@@ -39,6 +34,10 @@
     box-sizing: border-box;
 }
 
+html {
+    overflow-x: hidden;
+}
+
 body {
     font-family: 'Plus Jakarta Sans', sans-serif;
     background-color: var(--bg-main);
@@ -47,12 +46,8 @@ body {
     overflow-x: hidden;
 }
 
-html {
-    overflow-x: hidden;
-}
-
 /* ===================================
-   LAYOUT & SIDEBAR
+   LAYOUT
    =================================== */
 .app-container {
     display: flex;
@@ -95,6 +90,7 @@ html {
     color: white;
     font-size: 24px;
     box-shadow: var(--shadow-card);
+    flex-shrink: 0;
 }
 
 .page-title {
@@ -113,6 +109,7 @@ html {
     display: flex;
     align-items: center;
     gap: 15px;
+    flex-wrap: wrap;
 }
 
 .connection-status {
@@ -126,6 +123,7 @@ html {
     font-size: 13px;
     font-weight: 600;
     transition: all 0.3s;
+    white-space: nowrap;
 }
 
 .connection-status.connected {
@@ -138,6 +136,7 @@ html {
     height: 8px;
     background-color: currentColor;
     border-radius: 50%;
+    flex-shrink: 0;
     animation: blink 1.5s infinite;
 }
 
@@ -146,9 +145,13 @@ html {
     50% { opacity: 0.5; }
 }
 
-.topbar-actions {
-    display: flex;
-    gap: 15px;
+.connection-status.connected .status-indicator-dot {
+    animation: pulse-green 1.5s infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.6; transform: scale(1.3); }
 }
 
 .date-picker {
@@ -163,6 +166,7 @@ html {
     color: var(--text-secondary);
     box-shadow: 0 2px 10px rgba(226, 232, 240, 0.5);
     cursor: pointer;
+    white-space: nowrap;
 }
 
 /* ===================================
@@ -184,6 +188,8 @@ html {
     color: white;
     box-shadow: var(--shadow-card);
     transition: transform 0.3s ease;
+    min-width: 0;
+    cursor: pointer;
 }
 
 .metric-card:hover {
@@ -191,8 +197,8 @@ html {
 }
 
 .bg-purple { background: var(--grad-purple); }
-.bg-blue { background: var(--grad-blue); }
-.bg-red { background: var(--grad-red); }
+.bg-blue   { background: var(--grad-blue); }
+.bg-red    { background: var(--grad-red); }
 .bg-orange { background: var(--grad-orange); }
 
 .metric-icon {
@@ -204,6 +210,11 @@ html {
     justify-content: center;
     align-items: center;
     font-size: 22px;
+    flex-shrink: 0;
+}
+
+.metric-info {
+    min-width: 0;
 }
 
 .metric-value {
@@ -233,6 +244,7 @@ html {
     border-radius: var(--radius-lg);
     padding: 25px;
     box-shadow: var(--shadow-soft);
+    min-width: 0;
 }
 
 .chart-card {
@@ -244,6 +256,8 @@ html {
     display: flex;
     justify-content: space-between;
     margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .chart-header h2 {
@@ -261,6 +275,7 @@ html {
     display: flex;
     gap: 15px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .legend-item {
@@ -276,19 +291,26 @@ html {
     width: 8px;
     height: 8px;
     border-radius: 50%;
+    flex-shrink: 0;
 }
 .dot.purple { background-color: var(--color-purple); }
 .dot.yellow { background-color: var(--color-yellow); }
-.dot.red { background-color: var(--color-red); }
+.dot.red    { background-color: var(--color-red); }
 
 .canvas-wrapper {
     position: relative;
     width: 100%;
+    min-width: 0;
 }
 
 .line-canvas-wrapper {
     height: 250px;
     flex-grow: 1;
+}
+
+.donut-chart-container {
+    min-width: 0;
+    overflow: hidden;
 }
 
 .donut-canvas-wrapper {
@@ -297,6 +319,15 @@ html {
     justify-content: center;
     align-items: center;
     margin-bottom: 20px;
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.donut-canvas-wrapper canvas {
+    max-width: 100%;
+    max-height: 100%;
 }
 
 .donut-center-text {
@@ -305,6 +336,7 @@ html {
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
+    pointer-events: none;
 }
 
 .donut-center-text h3 {
@@ -330,6 +362,8 @@ html {
 .chart-bottom-stats {
     display: flex;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
     margin-top: 20px;
     padding-top: 20px;
     border-top: 1px dashed var(--border-color);
@@ -339,6 +373,7 @@ html {
     display: flex;
     align-items: center;
     gap: 15px;
+    min-width: 0;
 }
 
 .stat-icon {
@@ -350,6 +385,7 @@ html {
     align-items: center;
     color: white;
     font-size: 18px;
+    flex-shrink: 0;
 }
 
 .stat-title {
@@ -390,13 +426,21 @@ html {
     display: flex;
     align-items: flex-start;
     gap: 15px;
+    transition: background 0.2s;
+    border-radius: 8px;
+    padding: 6px 4px;
+}
+
+.activity-item:hover {
+    background: var(--bg-main);
 }
 
 .act-time {
     font-size: 11px;
     color: var(--text-secondary);
-    width: 60px;
+    width: 55px;
     padding-top: 4px;
+    flex-shrink: 0;
 }
 
 .act-icon {
@@ -408,10 +452,11 @@ html {
     align-items: center;
     color: white;
     font-size: 16px;
+    flex-shrink: 0;
 }
-.act-icon.red { background-color: var(--color-red); }
+.act-icon.red    { background-color: var(--color-red); }
 .act-icon.purple { background-color: var(--color-purple); }
-.act-icon.blue { background-color: var(--color-blue); }
+.act-icon.blue   { background-color: var(--color-blue); }
 
 .act-content h4 {
     font-size: 14px;
@@ -450,6 +495,7 @@ html {
 .table-actions {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 10px;
 }
 
@@ -461,6 +507,7 @@ html {
     font-family: inherit;
     font-size: 12px;
     outline: none;
+    min-width: 120px;
 }
 
 .data-table {
@@ -471,7 +518,7 @@ html {
 
 .data-table th {
     text-align: left;
-    padding: 15px 10px;
+    padding: 12px 8px;
     font-size: 11px;
     color: var(--text-secondary);
     font-weight: 600;
@@ -480,7 +527,7 @@ html {
 }
 
 .data-table td {
-    padding: 15px 10px;
+    padding: 12px 8px;
     font-size: 13px;
     font-weight: 600;
     border-bottom: 1px solid var(--bg-main);
@@ -497,16 +544,17 @@ html {
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    width: max-content;
     min-width: 90px;
 }
-.status-badge.alert { background-color: var(--color-red); }
+.status-badge.alert  { background-color: var(--color-red); }
 .status-badge.normal { background-color: var(--color-purple); }
 
 .table-pagination {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
     margin-top: 10px;
 }
 
@@ -552,9 +600,9 @@ html {
 .mt-3 { margin-top: 15px; }
 .mt-4 { margin-top: 25px; }
 
-.text-gray { color: var(--text-secondary); }
+.text-gray   { color: var(--text-secondary); }
 .text-center { text-align: center; }
-.py-4 { padding-top: 2rem; padding-bottom: 2rem; }
+.py-4        { padding-top: 2rem; padding-bottom: 2rem; }
 
 .btn-primary {
     background-color: var(--color-purple);
@@ -579,11 +627,13 @@ html {
     border-radius: 8px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 5px;
     font-family: inherit;
     font-weight: 600;
     font-size: 12px;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .bg-light {
@@ -604,6 +654,7 @@ html {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-width: calc(100vw - 40px);
 }
 
 .notification {
@@ -618,15 +669,16 @@ html {
     font-weight: 600;
     border-left: 4px solid var(--color-purple);
     animation: slideIn 0.3s;
+    transition: opacity 0.3s, transform 0.3s;
 }
 
 @keyframes slideIn {
     from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
+    to   { transform: translateX(0);    opacity: 1; }
 }
 
 /* ===================================
-   FLASH ANIMATION (Buzzer / LED aktif)
+   FLASH ANIMATION
    =================================== */
 @keyframes flash {
     0%   { filter: brightness(1); }
@@ -640,98 +692,186 @@ html {
 }
 
 /* ===================================
-   ACTIVITY ITEM HOVER
+   RESPONSIVE — TABLET (≤ 1024px)
    =================================== */
-.activity-item {
-    transition: background 0.2s;
-    border-radius: 8px;
-    padding: 6px 4px;
-}
+@media (max-width: 1024px) {
+    .main-content { padding: 25px; }
 
-.activity-item:hover {
-    background: var(--bg-main);
+    .metrics-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .charts-row {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .bottom-row {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .donut-canvas-wrapper { height: 220px; }
 }
 
 /* ===================================
-   PULSE — status indicator saat online
+   RESPONSIVE — MOBILE (≤ 768px)
    =================================== */
-.connection-status.connected .status-indicator-dot {
-    animation: pulse-green 1.5s infinite;
-}
-
-@keyframes pulse-green {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%       { opacity: 0.6; transform: scale(1.3); }
-}
-
-/* ===================================
-   NOTIFICATION TRANSITION
-   =================================== */
-.notification {
-    transition: opacity 0.3s, transform 0.3s;
-}
-
-/* ===================================
-   RESPONSIVE
-   =================================== */
-@media (max-width: 1200px) {
-    .metrics-row { grid-template-columns: repeat(2, 1fr); }
-    .charts-row { grid-template-columns: 1fr; }
-    .bottom-row { grid-template-columns: 1fr; }
-}
-
 @media (max-width: 768px) {
     .main-content { padding: 15px; }
-    .metrics-row { 
+
+    /* Topbar */
+    .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .topbar-actions {
+        width: 100%;
+        gap: 10px;
+    }
+    .connection-status {
+        font-size: 12px;
+        padding: 8px 12px;
+        flex: 1;
+        min-width: 0;
+    }
+    .date-picker {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+
+    /* Metric Cards */
+    .metrics-row {
         grid-template-columns: repeat(2, 1fr);
         gap: 12px;
+        margin-bottom: 20px;
     }
     .metric-card {
-        padding: 15px 10px;
-        flex-direction: column;
-        text-align: center;
-        gap: 8px;
+        padding: 18px 14px;
+        gap: 12px;
     }
     .metric-icon {
-        width: 40px;
-        height: 40px;
-        font-size: 20px;
+        width: 38px;
+        height: 38px;
+        font-size: 18px;
     }
-    .metric-value {
-        font-size: 20px;
-    }
-    .metric-label {
-        font-size: 11px;
-    }
-    .topbar { flex-direction: column; align-items: flex-start; gap: 15px; }
-    .topbar-actions { flex-wrap: wrap; }
-    
-    .chart-header { flex-direction: column; align-items: flex-start; gap: 10px; }
-    .table-header.flex-between { flex-direction: column; align-items: flex-start; gap: 15px; }
-    
-    .chart-legend-top, .chart-legend-bottom { flex-wrap: wrap; gap: 10px; }
-    
+    .metric-value { font-size: 20px; }
+    .metric-label { font-size: 11px; }
+
+    /* Charts */
+    .charts-row        { grid-template-columns: 1fr; gap: 15px; margin-bottom: 20px; }
+    .chart-header      { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .line-canvas-wrapper  { height: 200px; }
+    .donut-canvas-wrapper { height: 180px; }
     .chart-bottom-stats {
         flex-direction: column;
-        gap: 15px;
+        gap: 12px;
         align-items: flex-start;
     }
-    
-    .table-actions {
-        flex-wrap: wrap;
-        justify-content: flex-start;
+
+    /* Bottom Row */
+    .bottom-row { grid-template-columns: 1fr; gap: 15px; }
+
+    /* Table */
+    .table-header.flex-between {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
     }
-    
+    .table-actions {
+        width: 100%;
+        gap: 8px;
+    }
     .table-pagination {
         flex-direction: column;
-        gap: 15px;
+        gap: 12px;
         text-align: center;
     }
+    .data-table th {
+        padding: 10px 6px;
+        font-size: 10px;
+    }
+    .data-table td {
+        padding: 10px 6px;
+        font-size: 12px;
+    }
+    .status-badge {
+        padding: 4px 10px;
+        font-size: 10px;
+        min-width: 70px;
+    }
+
+    /* Notification */
+    .notification-container {
+        left: 15px;
+        right: 15px;
+        top: 15px;
+        max-width: calc(100vw - 30px);
+    }
+    .notification { font-size: 12px; padding: 12px 15px; }
 }
 
+/* ===================================
+   RESPONSIVE — SMALL MOBILE (≤ 480px)
+   =================================== */
 @media (max-width: 480px) {
-    .project-header { gap: 10px; }
-    .logo-icon-box { width: 40px; height: 40px; font-size: 20px; }
-    .page-title { font-size: 20px; }
-}
+    .main-content { padding: 12px; }
 
+    .page-title    { font-size: 18px; }
+    .page-subtitle { font-size: 11px; }
+    .logo-icon-box { width: 40px; height: 40px; font-size: 18px; }
+
+    /* Metric 2 kolom kecil, ikon di atas */
+    .metrics-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .metric-card {
+        padding: 14px 10px;
+        gap: 8px;
+        flex-direction: column;
+        text-align: center;
+    }
+    .metric-value { font-size: 18px; }
+    .metric-label { font-size: 10px; }
+
+    /* Table actions: Hapus & icon sejajar, search full width */
+    .table-actions {
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 8px;
+    }
+    .table-actions .btn-action.bg-red  { flex: 1; }
+    .table-actions .btn-action.bg-light { flex: 0 0 auto; }
+    .search-box {
+        order: 3;
+        flex: 1 1 100%;
+    }
+    .search-box input {
+        width: 100%;
+    }
+
+    .card { padding: 18px 15px; }
+    .chart-stats h3 { font-size: 22px; }
+    .line-canvas-wrapper  { height: 180px; }
+    .donut-canvas-wrapper { height: 160px; }
+
+    /* Tabel lebih ringkas di HP kecil */
+    .data-table th {
+        padding: 8px 5px;
+        font-size: 9px;
+        letter-spacing: 0;
+    }
+    .data-table td {
+        padding: 8px 5px;
+        font-size: 11px;
+    }
+    .status-badge {
+        padding: 3px 8px;
+        font-size: 10px;
+        min-width: 60px;
+    }
+}
