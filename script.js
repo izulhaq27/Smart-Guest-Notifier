@@ -138,10 +138,13 @@ function setupInteractiveControls() {
         const buzCard = buzzerStatus.closest('.metric-card');
         buzCard.style.cursor = "pointer";
         buzCard.onclick = async () => {
-            const current = buzzerStatus.textContent === 'ON' ? 0 : 1;
+            const current = buzzerStatus.textContent.trim() === 'ON' ? 0 : 1;
+            buzzerStatus.textContent = current ? 'ON' : 'OFF';
             console.log("Sending Buzzer Update:", current);
-            await fetch(`${_URL}/update?token=${_AUTH}&V2=${current}`);
-            setTimeout(fetchBlynkData, 500);
+            try {
+                await fetch(`${_URL}/update?token=${_AUTH}&V2=${current}`);
+            } catch(e) { console.error(e); }
+            setTimeout(fetchBlynkData, 1000);
         };
     }
 
@@ -149,10 +152,13 @@ function setupInteractiveControls() {
         const ledCard = ledStatus.closest('.metric-card');
         ledCard.style.cursor = "pointer";
         ledCard.onclick = async () => {
-            const current = ledStatus.textContent === 'ON' ? 0 : 1;
+            const current = ledStatus.textContent.trim() === 'ON' ? 0 : 1;
+            ledStatus.textContent = current ? 'ON' : 'OFF';
             console.log("Sending LED Update:", current);
-            await fetch(`${_URL}/update?token=${_AUTH}&V3=${current}`);
-            setTimeout(fetchBlynkData, 500);
+            try {
+                await fetch(`${_URL}/update?token=${_AUTH}&V3=${current}`);
+            } catch(e) { console.error(e); }
+            setTimeout(fetchBlynkData, 1000);
         };
     }
 

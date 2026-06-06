@@ -476,6 +476,7 @@ html {
     color: var(--text-secondary);
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
 }
 
 .data-table td {
@@ -483,6 +484,7 @@ html {
     font-size: 13px;
     font-weight: 600;
     border-bottom: 1px solid var(--bg-main);
+    white-space: nowrap;
 }
 
 .status-badge {
@@ -491,6 +493,12 @@ html {
     font-size: 11px;
     color: white;
     font-weight: 600;
+    white-space: nowrap;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: max-content;
+    min-width: 90px;
 }
 .status-badge.alert { background-color: var(--color-red); }
 .status-badge.normal { background-color: var(--color-purple); }
