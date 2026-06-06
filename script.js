@@ -177,6 +177,30 @@ function setupInteractiveControls() {
         });
     }
 
+    // --- Refresh Data Feature ---
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            const originalText = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Memuat...';
+            refreshBtn.style.opacity = '0.7';
+            refreshBtn.style.cursor = 'wait';
+            
+            fetchBlynkData().then(() => {
+                setTimeout(() => {
+                    refreshBtn.innerHTML = originalText;
+                    refreshBtn.style.opacity = '1';
+                    refreshBtn.style.cursor = 'pointer';
+                    showNotification("Data berhasil diperbarui!", "var(--color-blue)");
+                }, 500);
+            }).catch(() => {
+                refreshBtn.innerHTML = originalText;
+                refreshBtn.style.opacity = '1';
+                refreshBtn.style.cursor = 'pointer';
+            });
+        });
+    }
+
     // --- Delete / Reset Feature ---
     const resetBtn = document.getElementById('resetBtn');
     if (resetBtn) {
