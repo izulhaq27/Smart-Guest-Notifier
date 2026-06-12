@@ -62,18 +62,18 @@ async function fetchBlynkData() {
             if (currentVisitorCount > 0 || currentExitCount > 0) {
                 updateCharts(currentVisitorCount);
                 addActivityLog("Sistem Terhubung", `Total masuk: ${currentVisitorCount}, keluar: ${currentExitCount}`, "purple", "ph-fill ph-power");
-                addHistoryTableRow("-", "normal", "Sistem Aktif");
+                addHistoryTableRow("-", "normal", "Sistem Aktif", currentVisitorCount);
             }
         } else {
             if (currentVisitorCount > lastVisitorCount) {
                 if (currentHour >= 7 && currentHour < 9) {
                     showNotification("Karyawan Masuk Kerja!", "var(--color-purple)");
                     addActivityLog("Karyawan Masuk", "Karyawan masuk ke area", "purple", "ph-fill ph-user-check");
-                    addHistoryTableRow("-", "normal", "Karyawan Masuk");
+                    addHistoryTableRow("-", "normal", "Karyawan Masuk", currentVisitorCount);
                 } else {
                     showNotification("Tamu Umum Masuk!", "var(--color-blue)");
                     addActivityLog("Tamu Masuk", "Tamu umum terdeteksi", "blue", "ph-fill ph-user");
-                    addHistoryTableRow("-", "normal", "Tamu Masuk");
+                    addHistoryTableRow("-", "normal", "Tamu Masuk", currentVisitorCount);
                 }
                 updateCharts(currentVisitorCount);
             }
@@ -81,7 +81,7 @@ async function fetchBlynkData() {
             if (currentExitCount > lastExitCount) {
                 showNotification("Karyawan Pulang!", "var(--color-red)");
                 addActivityLog("Karyawan Pulang", "Karyawan meninggalkan area", "red", "ph-fill ph-sign-out");
-                addHistoryTableRow("-", "alert", "Pulang");
+                addHistoryTableRow("-", "alert", "Karyawan Keluar", currentExitCount);
             }
         }
 
@@ -242,14 +242,15 @@ function setupInteractiveControls() {
     // --- Download CSV Feature ---
     const exportCSV = () => {
         const rows = document.querySelectorAll('#historyTableBody tr');
-        let csvContent = "data:text/csv;charset=utf-8,NO,WAKTU,JARAK,AKUMULASI,STATUS\n";
+        let csvContent = "sep=,\nNO,WAKTU,JARAK,AKUMULASI,STATUS\n";
         
         let hasData = false;
         rows.forEach(row => {
             if(row.querySelector('td[colspan]')) return; 
             hasData = true;
             const cols = row.querySelectorAll('td');
-            const rowData = Array.from(cols).map(c => c.textContent.trim()).join(",");
+            // Menambahkan tanda kutip untuk mencegah pemotongan atau kesalahan parsing di Excel
+            const rowData = Array.from(cols).map(c => `"${c.textContent.trim()}"`).join(",");
             csvContent += rowData + "\n";
         });
         
@@ -258,10 +259,13 @@ function setupInteractiveControls() {
             return;
         }
 
-        const encodedUri = encodeURI(csvContent);
+        // Gunakan Blob dengan BOM (Byte Order Mark) agar Excel membaca UTF-8 dengan benar
+        const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
+        link.setAttribute("href", url);
         link.setAttribute("download", `Data_Pengunjung_${new Date().toLocaleDateString().replace(/\//g,'-')}.csv`);
+        link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -412,7 +416,7 @@ function addActivityLog(title, desc, colorClass, iconClass) {
     logContainer.insertAdjacentHTML('afterbegin', html);
 }
 
-function addHistoryTableRow(distanceVal, statusBadge, statusText) {
+function addHistoryTableRow(distanceVal, statusBadge, statusText, accVal) {
     const tbody = document.getElementById('historyTableBody');
     if (!tbody) return;
     
@@ -422,7 +426,7 @@ function addHistoryTableRow(distanceVal, statusBadge, statusText) {
     
     const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     const no = tbody.children.length + 1;
-    const currentTotal = document.getElementById('todayVisitorCount').textContent;
+    const currentTotal = accVal !== undefined ? accVal : (document.getElementById('todayVisitorCount').textContent || 0);
     
     const html = `
     <tr>
