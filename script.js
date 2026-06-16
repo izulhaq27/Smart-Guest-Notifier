@@ -91,7 +91,13 @@ async function fetchBlynkData() {
         // --- 3. Status Buzzer (V2) ---
         const v2 = extractPinValue(data, 'V2', 0);
         const buzEl = document.getElementById('buzzerStatus');
-        if (buzEl) buzEl.textContent = parseInt(v2) ? 'ON' : 'OFF';
+        const buzToggle = document.getElementById('buzzerToggle');
+        const isBuzOn = parseInt(v2);
+        if (buzEl) buzEl.textContent = isBuzOn ? 'ON' : 'OFF';
+        if (buzToggle) {
+            if (isBuzOn) buzToggle.classList.add('active');
+            else buzToggle.classList.remove('active');
+        }
 
         // --- 4. Status LED (V3) ---
         const v3 = extractPinValue(data, 'V3', 0);
@@ -143,16 +149,33 @@ function extractPinValue(data, pin, fallback) {
  * Setup klik pada card untuk ON/OFF hardware
  */
 function setupInteractiveControls() {
-    // Mencari card pembungkus (metric-card)
-    const buzzerStatus = document.getElementById('buzzerStatus');
-    const ledStatus = document.getElementById('ledStatus');
+    // Reset Total Keluar
+    const resetKeluarBtn = document.getElementById('resetKeluarBtn');
+    if (resetKeluarBtn) {
+        resetKeluarBtn.onclick = async () => {
+            if(confirm("Reset 'Total Keluar' ke 0?")) {
+                try {
+                    await fetch(`${_URL}/update?token=${_AUTH}&V1=0`);
+                    lastExitCount = -1;
+                    const exitEl = document.getElementById('exitCount');
+                    if (exitEl) exitEl.textContent = '0';
+                    showNotification("Total Keluar direset", "var(--color-pink)");
+                    setTimeout(fetchBlynkData, 500);
+                } catch(e) { console.error(e); }
+            }
+        };
+    }
 
-    if (buzzerStatus) {
-        const buzCard = buzzerStatus.closest('.metric-card');
-        buzCard.style.cursor = "pointer";
-        buzCard.onclick = async () => {
+    // Toggle Buzzer
+    const buzzerToggle = document.getElementById('buzzerToggle');
+    const buzzerStatus = document.getElementById('buzzerStatus');
+    if (buzzerToggle && buzzerStatus) {
+        buzzerToggle.onclick = async () => {
             const current = buzzerStatus.textContent.trim() === 'ON' ? 0 : 1;
             buzzerStatus.textContent = current ? 'ON' : 'OFF';
+            if (current) buzzerToggle.classList.add('active');
+            else buzzerToggle.classList.remove('active');
+            
             console.log("Sending Buzzer Update:", current);
             try {
                 await fetch(`${_URL}/update?token=${_AUTH}&V2=${current}`);
@@ -161,18 +184,23 @@ function setupInteractiveControls() {
         };
     }
 
+    // Toggle LED icon
+    const ledStatus = document.getElementById('ledStatus');
     if (ledStatus) {
         const ledCard = ledStatus.closest('.metric-card');
-        ledCard.style.cursor = "pointer";
-        ledCard.onclick = async () => {
-            const current = ledStatus.textContent.trim() === 'ON' ? 0 : 1;
-            ledStatus.textContent = current ? 'ON' : 'OFF';
-            console.log("Sending LED Update:", current);
-            try {
-                await fetch(`${_URL}/update?token=${_AUTH}&V3=${current}`);
-            } catch(e) { console.error(e); }
-            setTimeout(fetchBlynkData, 1000);
-        };
+        if (ledCard) {
+            ledCard.style.cursor = "pointer";
+            ledCard.onclick = async () => {
+                const current = ledStatus.textContent.trim() === 'ON' ? 0 : 1;
+                ledStatus.textContent = current ? 'ON' : 'OFF';
+                
+                console.log("Sending LED Update:", current);
+                try {
+                    await fetch(`${_URL}/update?token=${_AUTH}&V3=${current}`);
+                } catch(e) { console.error(e); }
+                setTimeout(fetchBlynkData, 1000);
+            };
+        }
     }
 
     // --- Search Feature ---
@@ -316,17 +344,24 @@ function initCharts() {
                 datasets: [{
                     label: 'Pengunjung',
                     data: [],
-                    borderColor: '#8c73e6',
-                    backgroundColor: 'rgba(140, 115, 230, 0.2)',
+                    borderColor: '#FF5B5B', // Using red color from the new design
+                    backgroundColor: 'rgba(255, 91, 91, 0.1)',
                     fill: true,
-                    tension: 0.4
+                    tension: 0.5, // Smoother curve
+                    pointRadius: 0,
+                    pointHoverRadius: 6
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: { beginAtZero: true }
+                    x: { display: false },
+                    y: { display: false, beginAtZero: true }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: true }
                 }
             }
         });
@@ -392,6 +427,28 @@ function updateCharts(visitorCount) {
     
     const avgEl = document.getElementById('avgPerHour');
     if (avgEl) avgEl.textContent = Math.ceil(visitorCount / (trendChartInstance.data.labels.length || 1));
+
+    // Update Progress Bars
+    if (total > 0) {
+        const pagiPct = Math.round((donutChartInstance.data.datasets[0].data[0] / total) * 100);
+        const siangPct = Math.round((donutChartInstance.data.datasets[0].data[1] / total) * 100);
+        const malamPct = Math.round((donutChartInstance.data.datasets[0].data[2] / total) * 100);
+
+        const progPagi = document.getElementById('progPagi');
+        const pctPagi = document.getElementById('pctPagi');
+        if(progPagi) progPagi.style.width = pagiPct + '%';
+        if(pctPagi) pctPagi.textContent = pagiPct + '%';
+
+        const progSiang = document.getElementById('progSiang');
+        const pctSiang = document.getElementById('pctSiang');
+        if(progSiang) progSiang.style.width = siangPct + '%';
+        if(pctSiang) pctSiang.textContent = siangPct + '%';
+
+        const progMalam = document.getElementById('progMalam');
+        const pctMalam = document.getElementById('pctMalam');
+        if(progMalam) progMalam.style.width = malamPct + '%';
+        if(pctMalam) pctMalam.textContent = malamPct + '%';
+    }
 }
 
 function addActivityLog(title, desc, colorClass, iconClass) {

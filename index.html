@@ -9,155 +9,203 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
     <div class="app-container">
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Topbar -->
-            <header class="topbar">
-                <div class="project-header">
-                    <div class="logo-icon-box">
-                        <i class="ph-fill ph-broadcast"></i>
-                    </div>
-                    <div>
-                        <h1 class="page-title">Smart Guest Notifier</h1>
-                        <p class="page-subtitle">Dashboard Monitoring IoT</p>
-                    </div>
-                </div>
-                <div class="topbar-actions">
-                    <div class="connection-status" id="blynkConnection">
-                        <span class="status-indicator-dot"></span>
-                        <span id="blynkStatusText">Connecting to ESP / Blynk...</span>
-                    </div>
-                    <div class="date-picker">
-                        <i class="ph ph-calendar-blank"></i>
-                        <span id="lastSyncTime">--:--</span>
-                    </div>
-                </div>
-            </header>
+            <div class="layout-grid">
+                
+                <!-- LEFT COLUMN -->
+                <div class="left-column">
+                    <!-- HEADER -->
+                    <header class="topbar">
+                        <div class="header-text">
+                            <div class="logo-icon"><i class="ph-fill ph-broadcast"></i></div>
+                            <div>
+                                <h1>Smart Guest Notifier</h1>
+                                <p>Dashboard Monitoring IoT</p>
+                            </div>
+                        </div>
+                        <div class="header-actions">
+                            <div class="search-bar">
+                                <i class="ph ph-magnifying-glass"></i>
+                                <input type="text" placeholder="Search">
+                            </div>
+                            <div class="profile-icon">
+                                <i class="ph ph-user"></i>
+                            </div>
+                        </div>
+                    </header>
 
-            <!-- Metric Cards Row -->
-            <div class="metrics-row">
-                <!-- Card 1 -->
-                <div class="metric-card bg-purple">
-                    <div class="metric-icon"><i class="ph-fill ph-heart"></i></div>
-                    <div class="metric-info">
-                        <div class="metric-value" id="todayVisitorCount">0</div>
-                        <div class="metric-label">Total Pengunjung</div>
+                    <!-- TOP CARDS -->
+                    <div class="top-cards-grid">
+                        <!-- Profile Card (Total Pengunjung) -->
+                        <div class="card profile-card">
+                            <div class="profile-header">
+                                <span class="card-title">Total Pengunjung</span>
+                                <i class="ph ph-arrows-clockwise text-gray" id="refreshIconProfile"></i>
+                            </div>
+                            <div class="profile-main">
+                                <div class="avatar-circle">
+                                    <div class="circle-progress">
+                                        <h2 id="todayVisitorCount">0</h2>
+                                    </div>
+                                </div>
+                                <div class="profile-name">
+                                    <h3>System Status</h3>
+                                    <p id="systemStatusText" class="status-offline">Offline</p>
+                                </div>
+                            </div>
+                            <div class="profile-stats">
+                                <div class="stat-item">
+                                    <i class="ph-fill ph-users text-orange"></i>
+                                    <span class="stat-val" id="avgPerHour">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="ph-fill ph-trend-up text-red"></i>
+                                    <span class="stat-val" id="peakCount">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="ph-fill ph-clock text-purple"></i>
+                                    <span class="stat-val" id="lastDetectionTime">--:--</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Gradient Cards & Trackers Column -->
+                        <div class="gradient-cards-wrapper">
+                            <div class="gradient-cards">
+                                <!-- Card: Total Keluar -->
+                                <div class="card grad-pink metric-card" id="cardTotalKeluar">
+                                    <div class="card-top">
+                                        <div class="card-titles">
+                                            <span class="card-main-title">Total Keluar</span>
+                                        </div>
+                                        <div class="icon-box" id="resetKeluarBtn" title="Reset Total Keluar" style="cursor: pointer; background: rgba(255,0,0,0.1); color: #d93838;"><i class="ph ph-trash"></i></div>
+                                    </div>
+                                    <div class="card-bottom">
+                                        <h2 id="exitCount">0</h2>
+                                        <p>Total Hari Ini</p>
+                                    </div>
+                                </div>
+                                <!-- Card: Status Buzzer -->
+                                <div class="card grad-blue metric-card" id="cardBuzzer">
+                                    <div class="card-top">
+                                        <div class="card-titles">
+                                            <span class="card-main-title">Status Buzzer</span>
+                                        </div>
+                                        <div class="icon-box"><i class="ph ph-speaker-high"></i></div>
+                                    </div>
+                                    <div class="card-bottom flex-between">
+                                        <div>
+                                            <h2 id="buzzerStatus">OFF</h2>
+                                            <p>Actuator Status</p>
+                                        </div>
+                                        <div class="toggle-switch" id="buzzerToggle">
+                                            <div class="toggle-slider"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Trackers Connected -->
+                            <div class="card trackers-card">
+                                <div class="trackers-text">
+                                    <span class="card-title">Hardware Connected</span>
+                                    <p>Active connections</p>
+                                </div>
+                                <div class="tracker-icons">
+                                    <div class="connection-status" id="blynkConnection" title="Blynk Status">
+                                        <i class="ph-fill ph-cloud-arrow-down"></i>
+                                    </div>
+                                    <div class="icon-circle bg-orange metric-card" title="LED Status">
+                                        <i class="ph-fill ph-lightbulb"></i>
+                                        <span id="ledStatus" style="display:none">OFF</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOTTOM LEFT: CHART -->
+                    <div class="card chart-card mt-20">
+                        <div class="chart-header flex-between">
+                            <div>
+                                <span class="card-title-lg">Tren Deteksi</span>
+                                <p class="card-subtitle">Productivity analytics</p>
+                            </div>
+                            <div class="chart-actions">
+                                <div class="date-picker">
+                                    Range: <span class="text-bold">Last hour</span> <i class="ph ph-caret-down"></i>
+                                </div>
+                                <button id="refreshBtn" class="refresh-btn" title="Refresh Data"><i class="ph ph-arrows-clockwise"></i></button>
+                            </div>
+                        </div>
+                        <div class="canvas-wrapper line-canvas-wrapper">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                        <div class="chart-bottom-info">
+                            <div class="legend-group">
+                                <div class="legend-item"><span class="dot red"></span> Maximum of focus</div>
+                                <div class="legend-item"><span class="dot purple"></span> Min or lack of focus</div>
+                            </div>
+                            <div class="chart-percent">
+                                <h2><span id="trafficIntensity">0%</span></h2>
+                                <p>Avg. Conc-ion</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <!-- Card 2 -->
-                <div class="metric-card bg-blue">
-                    <div class="metric-icon"><i class="ph-fill ph-sign-out"></i></div>
-                    <div class="metric-info">
-                        <div class="metric-value" id="exitCount">0</div>
-                        <div class="metric-label">Total Keluar</div>
+
+                <!-- RIGHT COLUMN -->
+                <div class="right-column">
+                    <!-- My Meetings (Log Aktivitas) -->
+                    <div class="sidebar-section meetings-section">
+                        <div class="section-header flex-between">
+                            <h2>Log Aktivitas</h2>
+                            <div class="icon-btn"><i class="ph ph-calendar-blank"></i></div>
+                        </div>
+                        <div class="activities-list" id="activityLog">
+                            <div class="activity-empty">Belum ada aktivitas</div>
+                        </div>
+                        <div class="see-all-container">
+                            <a href="#" class="see-all">See all activities <i class="ph ph-caret-right"></i></a>
+                        </div>
                     </div>
-                </div>
-                <!-- Card 3 -->
-                <div class="metric-card bg-red">
-                    <div class="metric-icon"><i class="ph-fill ph-speaker-high"></i></div>
-                    <div class="metric-info">
-                        <div class="metric-value" id="buzzerStatus">OFF</div>
-                        <div class="metric-label">Status Buzzer</div>
-                    </div>
-                </div>
-                <!-- Card 4 -->
-                <div class="metric-card bg-orange">
-                    <div class="metric-icon"><i class="ph-fill ph-lightbulb"></i></div>
-                    <div class="metric-info">
-                        <div class="metric-value" id="ledStatus">OFF</div>
-                        <div class="metric-label">Status LED</div>
+
+                    <!-- Developed Areas (Intensitas / Analytics) -->
+                    <div class="sidebar-section skills-section">
+                        <div class="section-header">
+                            <h2>Analytics Intensitas</h2>
+                            <p>Most common traffic times</p>
+                        </div>
+                        <div class="skills-list">
+                            <div class="skill-item">
+                                <span class="skill-name">Pagi</span>
+                                <div class="progress-bar"><div class="progress-fill bg-blue" id="progPagi" style="width: 0%"></div></div>
+                                <span class="skill-percent" id="pctPagi">0%</span>
+                                <i class="ph-fill ph-arrow-circle-up text-orange"></i>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-name">Siang</span>
+                                <div class="progress-bar"><div class="progress-fill bg-blue" id="progSiang" style="width: 0%"></div></div>
+                                <span class="skill-percent" id="pctSiang">0%</span>
+                                <i class="ph-fill ph-arrow-circle-up text-blue"></i>
+                            </div>
+                            <div class="skill-item">
+                                <span class="skill-name">Malam</span>
+                                <div class="progress-bar"><div class="progress-fill bg-blue" id="progMalam" style="width: 0%"></div></div>
+                                <span class="skill-percent" id="pctMalam">0%</span>
+                                <i class="ph-fill ph-arrow-circle-down text-purple"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Charts Row -->
-            <div class="charts-row">
-                <!-- Line Chart -->
-                <div class="card chart-card line-chart-container">
-                    <div class="chart-header">
-                        <div class="chart-title-area">
-                            <h2>Tren Deteksi</h2>
-                            <p>Overview pengunjung per jam</p>
-                            <div class="chart-stats mt-4">
-                                <h3 id="avgPerHour">0</h3>
-                                <span>Rata-rata Pengunjung / Jam</span>
-                            </div>
-                            <div class="chart-stats">
-                                <h3 id="peakCount">0</h3>
-                                <span>Puncak Kunjungan</span>
-                            </div>
-                            <button class="btn-primary mt-3" id="refreshBtn">Refresh Data</button>
-                        </div>
-                        <div class="chart-legend-top">
-                            <span class="legend-item"><span class="dot purple"></span> Pengunjung</span>
-                        </div>
-                    </div>
-                    <div class="canvas-wrapper line-canvas-wrapper">
-                        <canvas id="trendChart"></canvas>
-                    </div>
-                    
-                    <!-- Bottom stats of line chart like the image -->
-                    <div class="chart-bottom-stats">
-                        <div class="stat-box">
-                            <div class="stat-icon bg-red"><i class="ph-fill ph-wallet"></i></div>
-                            <div class="stat-text">
-                                <span class="stat-title">Status Sistem</span>
-                                <h4 id="systemStatusText">Offline</h4>
-                            </div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="stat-icon bg-purple"><i class="ph-fill ph-activity"></i></div>
-                            <div class="stat-text">
-                                <span class="stat-title">Waktu Puncak</span>
-                                <h4 id="peakHour">--:--</h4>
-                            </div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="stat-icon bg-blue"><i class="ph-fill ph-clock"></i></div>
-                            <div class="stat-text">
-                                <span class="stat-title">Deteksi Terakhir</span>
-                                <h4 id="lastDetectionTime">--:--</h4>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Donut Chart -->
-                <div class="card chart-card donut-chart-container">
-                    <div class="chart-header flex-between">
-                        <h2>Analytics</h2>
-                        <i class="ph ph-dots-three text-gray"></i>
-                    </div>
-                    <div class="canvas-wrapper donut-canvas-wrapper">
-                        <canvas id="donutChart"></canvas>
-                        <div class="donut-center-text">
-                            <h3 id="trafficIntensity">0%</h3>
-                            <p>Intensitas</p>
-                        </div>
-                    </div>
-                    <div class="chart-legend-bottom">
-                        <span class="legend-item"><span class="dot purple"></span> Pagi</span>
-                        <span class="legend-item"><span class="dot yellow"></span> Siang</span>
-                        <span class="legend-item"><span class="dot red"></span> Malam</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Bottom Row (Activities & Table) -->
-            <div class="bottom-row">
-                <!-- Recent Activities -->
-                <div class="card activities-card">
-                    <h2>Log Aktivitas</h2>
-                    <div class="activities-list" id="activityLog">
-                        <div class="activity-empty">Belum ada aktivitas</div>
-                    </div>
-                </div>
-
-                <!-- Order Status / History Table -->
+            <!-- BOTTOM ROW: TABLE -->
+            <div class="bottom-table-container mt-20">
                 <div class="card table-card">
                     <div class="table-header flex-between">
                         <div>
@@ -168,6 +216,7 @@
                             <button class="btn-action bg-red text-white" id="resetBtn"><i class="ph ph-trash"></i> Hapus</button>
                             <button class="btn-action bg-light" id="downloadBtn"><i class="ph ph-download-simple"></i></button>
                             <div class="search-box">
+                                <i class="ph ph-magnifying-glass"></i>
                                 <input type="text" id="searchInput" placeholder="Search...">
                             </div>
                             <button class="btn-action bg-light" id="exportBtn"><i class="ph ph-file-csv"></i></button>
@@ -191,14 +240,14 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="table-pagination">
-                        <span class="showing-text" id="showingText">Menampilkan data history terbaru</span>
-                        <div class="pagination-controls" id="paginationControls">
-                            <!-- Injected by JS -->
-                        </div>
-                    </div>
                 </div>
             </div>
+
+            <!-- Donut chart hidden so script doesn't break -->
+            <div style="position: absolute; visibility: hidden; pointer-events: none; width: 0; height: 0; overflow: hidden;">
+                <canvas id="donutChart"></canvas>
+            </div>
+
         </main>
     </div>
 
@@ -206,7 +255,7 @@
     <div class="notification-container" id="notificationContainer"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.js"></script>
-    <script src="config.js?v=3"></script>
-    <script src="script.js?v=3"></script>
+    <script src="config.js?v=4"></script>
+    <script src="script.js?v=4"></script>
 </body>
 </html>
