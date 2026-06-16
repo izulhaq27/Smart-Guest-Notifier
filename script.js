@@ -1,5 +1,6 @@
 /**
- * SMART GUEST NOTIFIER - REPAIR SCRIPT V4.0
+ * SMART GUEST NOTIFIER - REPAIR SCRIPT V5.0
+ * Dark Glassmorphism UI with full Blynk IoT integration
  * Fix: Data binding for V1, V2, V3 and Control Interaction
  */
 
@@ -14,7 +15,12 @@ let donutChartInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("✅ Dashboard Ready. Starting sync...");
+    
+    // Initialize UI components
+    generateMiniCalendar();
     setupInteractiveControls();
+    setupMobileNav();
+    setupNavLinks();
     initCharts();
     
     // Initial fetch and loop
@@ -22,8 +28,89 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(fetchBlynkData, 5000);
 });
 
+/* ===================================
+   MINI CALENDAR GENERATOR
+   =================================== */
+function generateMiniCalendar() {
+    const container = document.getElementById('miniCalendar');
+    if (!container) return;
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const today = now.getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    
+    let html = '<div class="cal-header">';
+    dayNames.forEach(d => {
+        html += `<span>${d}</span>`;
+    });
+    html += '</div><div class="cal-grid">';
+
+    // Empty slots before month starts
+    for (let i = 0; i < firstDay; i++) {
+        html += '<span class="cal-day inactive"></span>';
+    }
+
+    // Days of the month
+    for (let d = 1; d <= daysInMonth; d++) {
+        const isToday = d === today ? ' today' : '';
+        html += `<span class="cal-day${isToday}">${d}</span>`;
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+/* ===================================
+   MOBILE NAVIGATION
+   =================================== */
+function setupMobileNav() {
+    const menuBtn = document.getElementById('mobileMenuBtn');
+    const overlay = document.getElementById('mobileNavOverlay');
+    
+    if (menuBtn && overlay) {
+        menuBtn.addEventListener('click', () => {
+            overlay.classList.toggle('show');
+        });
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay || e.target.classList.contains('mobile-nav-link')) {
+                overlay.classList.remove('show');
+            }
+        });
+    }
+}
+
+/* ===================================
+   NAV LINKS INTERACTION
+   =================================== */
+function setupNavLinks() {
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            navLinks.forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+        });
+    });
+
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+}
+
+/* ===================================
+   BLYNK DATA FETCHING
+   =================================== */
 async function fetchBlynkData() {
-    // Meminta semua data sekaligus
     const url = `${_URL}/get?token=${_AUTH}&V0&V1&V2&V3`;
     const hwStatusUrl = `${_URL}/isHardwareConnected?token=${_AUTH}`;
     
@@ -46,6 +133,9 @@ async function fetchBlynkData() {
         const currentVisitorCount = parseInt(v0) || 0;
         document.getElementById('todayVisitorCount').textContent = currentVisitorCount;
 
+        // Update circle progress
+        updateCircleProgress(currentVisitorCount);
+
         // --- 2. Exit Count (V1) ---
         const v1 = extractPinValue(data, 'V1', 0);
         const currentExitCount = parseInt(v1) || 0;
@@ -58,7 +148,6 @@ async function fetchBlynkData() {
         const currentHour = new Date().getHours();
         
         if (lastVisitorCount === -1) {
-            // Initial load
             if (currentVisitorCount > 0 || currentExitCount > 0) {
                 updateCharts(currentVisitorCount);
                 addActivityLog("Sistem Terhubung", `Total masuk: ${currentVisitorCount}, keluar: ${currentExitCount}`, "purple", "ph-fill ph-power");
@@ -104,6 +193,9 @@ async function fetchBlynkData() {
         const ledEl = document.getElementById('ledStatus');
         if (ledEl) ledEl.textContent = parseInt(v3) ? 'ON' : 'OFF';
 
+        // Update ctrl buttons states
+        updateCtrlButtonStates(isBuzOn, parseInt(v3));
+
         // Update UI based on actual Hardware Status
         if (isOnline) {
             updateConnectionUI(true, "Connected to ESP");
@@ -116,8 +208,16 @@ async function fetchBlynkData() {
         const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         const lastSyncEl = document.getElementById('lastSyncTime');
         if (lastSyncEl) lastSyncEl.textContent = timeStr;
+        
+        // Update the display method
+        const methodDisplay = document.getElementById('paymentMethodDisplay');
+        if (methodDisplay) methodDisplay.textContent = isOnline ? 'Active' : 'Offline';
+        
         const lastDetEl = document.getElementById('lastDetectionTime');
         if (lastDetEl && (currentVisitorCount > 0 || currentExitCount > 0)) lastDetEl.textContent = timeStr;
+
+        // Update intensity slider
+        updateIntensitySlider(currentVisitorCount);
 
     } catch (err) {
         console.error("❌ Sync Error:", err);
@@ -145,9 +245,56 @@ function extractPinValue(data, pin, fallback) {
     return data || fallback;
 }
 
-/**
- * Setup klik pada card untuk ON/OFF hardware
- */
+/* ===================================
+   CIRCLE PROGRESS UPDATE
+   =================================== */
+function updateCircleProgress(count) {
+    const circleFill = document.getElementById('heroCircleFill');
+    if (!circleFill) return;
+    
+    const maxCount = 50; // Scale: 50 visitors = full circle
+    const percentage = Math.min(count / maxCount, 1);
+    const circumference = 2 * Math.PI * 42; // r=42
+    const offset = circumference - (percentage * circumference);
+    
+    circleFill.style.strokeDasharray = circumference;
+    circleFill.style.strokeDashoffset = offset;
+}
+
+/* ===================================
+   INTENSITY SLIDER UPDATE
+   =================================== */
+function updateIntensitySlider(count) {
+    const fill = document.getElementById('intensitySlider');
+    const thumb = document.getElementById('intensityThumb');
+    if (!fill || !thumb) return;
+
+    const maxCount = 50;
+    const pct = Math.min((count / maxCount) * 100, 100);
+    fill.style.width = pct + '%';
+    thumb.style.left = pct + '%';
+}
+
+/* ===================================
+   CONTROL BUTTON STATES
+   =================================== */
+function updateCtrlButtonStates(buzzerOn, ledOn) {
+    const buzzerBtn = document.getElementById('buzzerCtrlBtn');
+    const ledBtn = document.getElementById('ledCtrlBtn');
+    
+    if (buzzerBtn) {
+        if (buzzerOn) buzzerBtn.classList.add('active-ctrl');
+        else buzzerBtn.classList.remove('active-ctrl');
+    }
+    if (ledBtn) {
+        if (ledOn) ledBtn.classList.add('active-ctrl');
+        else ledBtn.classList.remove('active-ctrl');
+    }
+}
+
+/* ===================================
+   INTERACTIVE CONTROLS
+   =================================== */
 function setupInteractiveControls() {
     // Reset Total Keluar
     const resetKeluarBtn = document.getElementById('resetKeluarBtn');
@@ -184,23 +331,28 @@ function setupInteractiveControls() {
         };
     }
 
-    // Toggle LED icon
+    // Buzzer button shortcut
+    const buzzerCtrlBtn = document.getElementById('buzzerCtrlBtn');
+    if (buzzerCtrlBtn) {
+        buzzerCtrlBtn.onclick = () => {
+            if (buzzerToggle) buzzerToggle.click();
+        };
+    }
+
+    // Toggle LED via button
+    const ledCtrlBtn = document.getElementById('ledCtrlBtn');
     const ledStatus = document.getElementById('ledStatus');
-    if (ledStatus) {
-        const ledCard = ledStatus.closest('.metric-card');
-        if (ledCard) {
-            ledCard.style.cursor = "pointer";
-            ledCard.onclick = async () => {
-                const current = ledStatus.textContent.trim() === 'ON' ? 0 : 1;
-                ledStatus.textContent = current ? 'ON' : 'OFF';
-                
-                console.log("Sending LED Update:", current);
-                try {
-                    await fetch(`${_URL}/update?token=${_AUTH}&V3=${current}`);
-                } catch(e) { console.error(e); }
-                setTimeout(fetchBlynkData, 1000);
-            };
-        }
+    if (ledCtrlBtn && ledStatus) {
+        ledCtrlBtn.onclick = async () => {
+            const current = ledStatus.textContent.trim() === 'ON' ? 0 : 1;
+            ledStatus.textContent = current ? 'ON' : 'OFF';
+            
+            console.log("Sending LED Update:", current);
+            try {
+                await fetch(`${_URL}/update?token=${_AUTH}&V3=${current}`);
+            } catch(e) { console.error(e); }
+            setTimeout(fetchBlynkData, 1000);
+        };
     }
 
     // --- Search Feature ---
@@ -222,22 +374,15 @@ function setupInteractiveControls() {
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', () => {
-            const originalText = refreshBtn.innerHTML;
-            refreshBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Memuat...';
-            refreshBtn.style.opacity = '0.7';
-            refreshBtn.style.cursor = 'wait';
+            refreshBtn.classList.add('spinning');
             
             fetchBlynkData().then(() => {
                 setTimeout(() => {
-                    refreshBtn.innerHTML = originalText;
-                    refreshBtn.style.opacity = '1';
-                    refreshBtn.style.cursor = 'pointer';
+                    refreshBtn.classList.remove('spinning');
                     showNotification("Data berhasil diperbarui!", "var(--color-blue)");
                 }, 500);
             }).catch(() => {
-                refreshBtn.innerHTML = originalText;
-                refreshBtn.style.opacity = '1';
-                refreshBtn.style.cursor = 'pointer';
+                refreshBtn.classList.remove('spinning');
             });
         });
     }
@@ -277,7 +422,6 @@ function setupInteractiveControls() {
             if(row.querySelector('td[colspan]')) return; 
             hasData = true;
             const cols = row.querySelectorAll('td');
-            // Menambahkan tanda kutip untuk mencegah pemotongan atau kesalahan parsing di Excel
             const rowData = Array.from(cols).map(c => `"${c.textContent.trim()}"`).join(",");
             csvContent += rowData + "\n";
         });
@@ -287,7 +431,6 @@ function setupInteractiveControls() {
             return;
         }
 
-        // Gunakan Blob dengan BOM (Byte Order Mark) agar Excel membaca UTF-8 dengan benar
         const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -306,15 +449,35 @@ function setupInteractiveControls() {
     if (downloadBtn) downloadBtn.addEventListener('click', exportCSV);
 }
 
+/* ===================================
+   CONNECTION UI
+   =================================== */
 function updateConnectionUI(online, msg) {
     const badge = document.getElementById('blynkConnection');
-    const text  = document.getElementById('blynkStatusText');
     const sysText = document.getElementById('systemStatusText');
-    if (badge) badge.className = online ? 'connection-status connected' : 'connection-status';
-    if (text) text.textContent = msg;
-    if (sysText) sysText.textContent = online ? 'Online' : 'Offline';
+    
+    if (badge) {
+        badge.className = online ? 'user-dot online connected' : 'user-dot online';
+        if (!online) {
+            badge.style.background = 'rgba(248, 113, 113, 0.15)';
+            badge.style.color = '#f87171';
+            badge.style.borderColor = '#f87171';
+        } else {
+            badge.style.background = '';
+            badge.style.color = '';
+            badge.style.borderColor = '';
+        }
+    }
+    
+    if (sysText) {
+        sysText.textContent = online ? 'Online' : 'Offline';
+        sysText.className = online ? 'hero-stat-value online' : 'hero-stat-value';
+    }
 }
 
+/* ===================================
+   NOTIFICATIONS
+   =================================== */
 function showNotification(message, colorCode) {
     const container = document.getElementById('notificationContainer');
     if (!container) return;
@@ -334,6 +497,9 @@ function showNotification(message, colorCode) {
     }, 3000);
 }
 
+/* ===================================
+   CHARTS
+   =================================== */
 function initCharts() {
     const trendCtx = document.getElementById('trendChart');
     if (trendCtx) {
@@ -344,12 +510,16 @@ function initCharts() {
                 datasets: [{
                     label: 'Pengunjung',
                     data: [],
-                    borderColor: '#FF5B5B', // Using red color from the new design
-                    backgroundColor: 'rgba(255, 91, 91, 0.1)',
+                    borderColor: '#34d399',
+                    backgroundColor: 'rgba(52, 211, 153, 0.08)',
                     fill: true,
-                    tension: 0.5, // Smoother curve
+                    tension: 0.5,
                     pointRadius: 0,
-                    pointHoverRadius: 6
+                    pointHoverRadius: 6,
+                    borderWidth: 2,
+                    pointHoverBackgroundColor: '#34d399',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2,
                 }]
             },
             options: {
@@ -361,8 +531,21 @@ function initCharts() {
                 },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { enabled: true }
-                }
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(20, 30, 20, 0.9)',
+                        titleColor: '#f0f5f0',
+                        bodyColor: '#a8e6a3',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        padding: 10,
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index',
+                },
             }
         });
     }
@@ -375,7 +558,7 @@ function initCharts() {
                 labels: ['Pagi', 'Siang', 'Malam'],
                 datasets: [{
                     data: [0, 0, 0],
-                    backgroundColor: ['#8c73e6', '#f6c042', '#fa7076'],
+                    backgroundColor: ['#34d399', '#60a5fa', '#a78bfa'],
                     borderWidth: 0
                 }]
             },
@@ -451,6 +634,9 @@ function updateCharts(visitorCount) {
     }
 }
 
+/* ===================================
+   ACTIVITY LOG
+   =================================== */
 function addActivityLog(title, desc, colorClass, iconClass) {
     const logContainer = document.getElementById('activityLog');
     if (!logContainer) return;
@@ -473,6 +659,9 @@ function addActivityLog(title, desc, colorClass, iconClass) {
     logContainer.insertAdjacentHTML('afterbegin', html);
 }
 
+/* ===================================
+   HISTORY TABLE
+   =================================== */
 function addHistoryTableRow(distanceVal, statusBadge, statusText, accVal) {
     const tbody = document.getElementById('historyTableBody');
     if (!tbody) return;
